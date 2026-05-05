@@ -1,0 +1,80 @@
+{
+  "project_name": "Vula Engine / Business Launchpad",
+  "theme": "dark",
+  "archetype": "Archetype 5 (Jewel & Luxury) / Swiss Brutalist Hybrid",
+  "colors": {
+    "background": "#0A0F1A",
+    "surface": "#131B2B",
+    "surfaceHover": "#1E293B",
+    "border": "rgba(255, 255, 255, 0.1)",
+    "primary": "#D4AF37",
+    "primaryForeground": "#0A0F1A",
+    "secondary": "#38BDF8",
+    "secondaryForeground": "#0A0F1A",
+    "textMain": "#FFFFFF",
+    "textMuted": "#94A3B8",
+    "success": "#10B981",
+    "warning": "#F59E0B",
+    "danger": "#EF4444"
+  },
+  "typography": {
+    "headingFont": "Cabinet Grotesk",
+    "bodyFont": "Manrope",
+    "monoFont": "JetBrains Mono",
+    "scales": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-none font-bold",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight leading-snug font-bold",
+      "h3": "text-xl sm:text-2xl tracking-tight font-semibold",
+      "h4": "text-lg sm:text-xl font-medium",
+      "body": "text-base leading-relaxed text-slate-400",
+      "small": "text-sm text-slate-500",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em] text-slate-500"
+    }
+  },
+  "layout": {
+    "spacing": "Generous spacing. Use p-6, p-8, p-12. Containers must have internal padding.",
+    "gridMode": "Control Room Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4) with gap-6 for dashboard density.",
+    "surfaceStrategy": "Dashboard Cards: Flat background (#131B2B), 1px border-white/10, no shadow. Hover: -translate-y-1, border-white/20.",
+    "header": "Crystal Glass: bg-[#0A0F1A]/60, backdrop-blur-xl, border-b border-white/10.",
+    "sidebar": "Sleek, dark vertical sidebar with Phosphor Icons. Muted text until hover/active where it highlights with primary gold."
+  },
+  "components": {
+    "icons": "@phosphor-icons/react",
+    "animation": "Framer Motion for page transitions, CMD+K search entrance, and hover states. Subtle micro-interactions.",
+    "data_visualization": "Recharts for analytics, styled with primary and secondary accent colors."
+  },
+  "images": {
+    "command_center_bg": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/f4402e53-034c-4b80-875b-a1d8ab151815/images/f2db3993b63ad77586e954aa2528a79c8d3c0271362251d620f1978d8df1656e.png",
+      "description": "Background image for the Welcome/Login or main Dashboard hero.",
+      "category": "hero_background"
+    },
+    "briefing_room_art": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/f4402e53-034c-4b80-875b-a1d8ab151815/images/bfe12e3de78893fbb2bf97b514ab7c5b9eaf9bd96ff2482f9bf14298fcfe19c1.png",
+      "description": "Data streams art for the Briefing Room header or empty states.",
+      "category": "decorative"
+    },
+    "vault_texture": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/f4402e53-034c-4b80-875b-a1d8ab151815/images/83a0af2446f20b18564f1fc35ecca6f5bca826cd0f5e47954924c3d62e123bd7.png",
+      "description": "Premium titanium vault texture for the Document Vault background.",
+      "category": "texture"
+    },
+    "executive_office": {
+      "url": "https://images.pexels.com/photos/35058546/pexels-photo-35058546.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Stylish executive office for onboarding wizard background or general app empty state.",
+      "category": "onboarding_background"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Use dark mode exclusively. Do NOT use standard Tailwind blue/zinc defaults. Apply custom colors defined in this JSON.",
+    "Implement 'Cabinet Grotesk' for all headings and 'Manrope' for body text. Add the fonts via Google Fonts.",
+    "Create a multi-room dashboard layout with a collapsible sidebar and a global CMD+K command palette.",
+    "Rooms needed: Briefing Room, Legal Desk, Design Studio, Marketing War Room, Operations Floor, Sales Gym, Vault. Use Phosphor Icons for nav.",
+    "Every interactive element MUST have a `data-testid` attribute (kebab-case, role-based).",
+    "Use Shadcn UI components but heavily customize them: borders should be 1px white/10, backgrounds flat.",
+    "For the Vault section, use `vault_texture` as a subtle background or header image with heavy dark overlay (bg-black/80).",
+    "Use 'command_center_bg' for the Login screen or initial Welcome Onboarding Wizard.",
+    "Maintain an '8-year-old logic' (simple, no-fluff) tone in all AI text and UI copy.",
+    "Make the UI feel like walking into a high-end corporate command center. Avoid excessive soft shadows; prefer sharp, precise edges with subtle glows."
+  ]
+}

@@ -1,54 +1,56 @@
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { api, getSessionId, ROOMS } from "@/lib/api";
+import Onboarding from "@/components/Onboarding";
+import Shell from "@/components/Shell";
+import Briefing from "@/rooms/Briefing";
+import Legal from "@/rooms/Legal";
+import Design from "@/rooms/Design";
+import Marketing from "@/rooms/Marketing";
+import Ops from "@/rooms/Ops";
+import SalesGym from "@/rooms/SalesGym";
+import Vault from "@/rooms/Vault";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+export default function App() {
+  const [profile, setProfile] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const sessionId = getSessionId();
 
   useEffect(() => {
-    helloWorldApi();
-  }, []);
+    api.get(`/profiles/${sessionId}`).then(r => {
+      setProfile(r.data || null);
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, [sessionId]);
+
+  if (!loaded) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-[#0A0F1A]">
+        <div className="font-display text-2xl shimmer-text">Vula Engine</div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return <Onboarding sessionId={sessionId} onDone={(p) => setProfile(p)} />;
+  }
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Shell profile={profile} setProfile={setProfile} sessionId={sessionId} />}>
+          <Route path="/" element={<Navigate to="/briefing" replace />} />
+          <Route path="/briefing"  element={<Briefing  profile={profile} sessionId={sessionId} />} />
+          <Route path="/legal"     element={<Legal     profile={profile} sessionId={sessionId} />} />
+          <Route path="/design"    element={<Design    profile={profile} sessionId={sessionId} />} />
+          <Route path="/marketing" element={<Marketing profile={profile} sessionId={sessionId} />} />
+          <Route path="/ops"       element={<Ops       profile={profile} sessionId={sessionId} />} />
+          <Route path="/salesgym"  element={<SalesGym  profile={profile} sessionId={sessionId} />} />
+          <Route path="/vault"     element={<Vault     profile={profile} sessionId={sessionId} />} />
+          <Route path="*" element={<Navigate to="/briefing" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;

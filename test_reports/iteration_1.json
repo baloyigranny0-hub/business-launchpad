@@ -1,0 +1,37 @@
+{
+  "summary": "Full backend API test suite for Vula Engine: 18/18 tests passed. Root, 9-agent list, profile upsert+get, AI chat (research) + AI generate (profile) via OpenRouter free-model fallback chain, vault CRUD, tasks CRUD (incl. 404 path), resources list + country filter. Confirmed no MongoDB _id leakage in any response.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/agents/chat & /api/agents/generate", "issue": "Default model google/gemma-4-31b-it:free (and gemma-4-26b-a4b-it:free) appear unavailable on OpenRouter — every request traverses fallback chain and is served by openai/gpt-oss-20b:free. App still returns valid non-empty replies, but OPENROUTER_MODEL in backend/.env is effectively dead."},
+      {"endpoint": "/api/profiles/{session_id}", "issue": "Returns 200 with JSON null body when profile missing. Fine for current frontend contract but unusual REST style (could be 404)."},
+      {"endpoint": "/api/tasks PATCH", "issue": "find_one_and_update uses return_document=True instead of pymongo.ReturnDocument.AFTER. Works because truthy, but non-idiomatic."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Update OPENROUTER_MODEL in backend/.env to a model that actually exists on OpenRouter free tier (e.g. google/gemma-2-9b-it:free or keep gpt-oss-20b:free as primary). The gemma-4-* family model IDs don't resolve.",
+    "Optional: have GET /api/profiles/{session_id} return 404 when missing instead of 200 + null (minor REST hygiene).",
+    "Optional: replace return_document=True with pymongo.ReturnDocument.AFTER for clarity."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 337 lines — acceptable now, consider splitting routes per resource if it grows past 700.",
+    "OpenRouter fallback chain is well-implemented (retries on non-200 and on malformed JSON, times out at 90s).",
+    "All Mongo reads use projection {'_id': 0} — good, no ObjectId leaks confirmed by recursive _no_objectid assertion.",
+    "Inputs validated via Pydantic. Session-scoped data model is consistent across profiles/vault/tasks/chats.",
+    "CORS uses CORS_ORIGINS env; keys loaded via load_dotenv() — good.",
+    "No auth/rate-limiting on AI endpoints — can be abused to burn free-tier quota. Consider simple per-session throttle later."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100%", "frontend": "not tested (skipped per request)"},
+  "test_credentials": "none required (no auth)",
+  "seed_data_creation": "Ephemeral TEST_-prefixed data created per session_id and cleaned up by test_zz_cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend is green. If main agent changes OPENROUTER_MODEL env, re-run pytest /app/backend/tests/backend_test.py. The test test_research_chat_non_empty/test_profile_generate_non_empty rely on OpenRouter reachability — they will pass as long as at least one model in the fallback chain returns a non-empty reply. Public base URL used: https://startup-forge-79.preview.emergentagent.com.",
+  "rca of the issue": "N/A — no bugs blocking. Only observation: the primary model ID google/gemma-4-31b-it:free does not resolve on OpenRouter (the current public free offerings are gemma-2/gemma-3, not gemma-4). The fallback list correctly compensates, served by openai/gpt-oss-20b:free in practice."
+}

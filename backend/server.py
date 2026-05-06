@@ -23,15 +23,21 @@ db = client[os.environ["DB_NAME"]]
 OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
 OPENROUTER_FALLBACKS = [
-    OPENROUTER_MODEL,
+    OPENROUTER_MODEL,                              # primary (user-chosen Gemma 4)
     "google/gemma-4-26b-a4b-it:free",
-    "z-ai/glm-4.5-air:free",
+    "openai/gpt-oss-120b:free",
     "openai/gpt-oss-20b:free",
+    "z-ai/glm-4.5-air:free",
+    "minimax/minimax-m2.5:free",
+    "tencent/hy3-preview:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
     "nvidia/nemotron-nano-9b-v2:free",
+    "openrouter/auto",                             # last-ditch auto router
 ]
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-app = FastAPI(title="Vula Engine API")
+app = FastAPI(title="Foundry API")
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -130,8 +136,8 @@ async def call_openrouter(messages: List[Dict[str, str]], temperature: float = 0
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://vula-engine.app",
-        "X-Title": "Vula Engine",
+        "HTTP-Referer": "https://foundry.app",
+        "X-Title": "Foundry",
     }
     last_err = None
     async with httpx.AsyncClient(timeout=90.0) as ac:
@@ -175,7 +181,7 @@ def build_profile_context(profile: Optional[Dict[str, Any]]) -> str:
 # ------------------------- Routes -------------------------
 @api_router.get("/")
 async def root():
-    return {"app": "Vula Engine", "model": OPENROUTER_MODEL, "status": "ok"}
+    return {"app": "Foundry", "model": OPENROUTER_MODEL, "status": "ok"}
 
 
 @api_router.get("/agents")

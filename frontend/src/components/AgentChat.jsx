@@ -19,11 +19,18 @@ export default function AgentChat({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    if (!loading) { setElapsed(0); return; }
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   const send = async (text) => {
     const content = (text ?? input).trim();
@@ -90,7 +97,8 @@ export default function AgentChat({
         {loading && (
           <div className="flex items-center gap-2 text-slate-500 text-sm">
             <CircleNotch size={16} className="animate-spin" />
-            thinking…
+            thinking… <span className="font-mono text-[11px]">{elapsed}s</span>
+            {elapsed > 8 && <span className="text-[11px] text-slate-600">· trying another free model</span>}
           </div>
         )}
       </div>

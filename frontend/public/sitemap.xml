@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>/briefing</loc><changefreq>weekly</changefreq></url>
+  <url><loc>/legal</loc><changefreq>weekly</changefreq></url>
+  <url><loc>/design</loc><changefreq>weekly</changefreq></url>
+  <url><loc>/marketing</loc><changefreq>weekly</changefreq></url>
+  <url><loc>/ops</loc><changefreq>weekly</changefreq></url>
+  <url><loc>/salesgym</loc><changefreq>weekly</changefreq></url>
+  <url><loc>/vault</loc><changefreq>weekly</changefreq></url>
+  <url><loc>/privacy</loc><changefreq>monthly</changefreq></url>
+  <url><loc>/terms</loc><changefreq>monthly</changefreq></url>
+</urlset>

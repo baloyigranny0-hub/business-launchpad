@@ -4,11 +4,37 @@ import { ArrowRight, Lightning, Sparkle } from "@phosphor-icons/react";
 import { api } from "@/lib/api";
 
 const INDUSTRIES = [
-  "Agriculture & Farming", "Food & Beverage", "Hospitality / Restaurant",
-  "Retail / E-commerce", "Logistics & Transport", "Construction",
-  "Beauty & Grooming (Barber/Salon)", "Health & Wellness", "Technology / Software",
-  "Creative / Design / Media", "Manufacturing", "Education / Training",
-  "Professional Services", "Real Estate", "Financial Services", "Other",
+  "Agriculture & Farming",
+  "Food & Beverage",
+  "Hospitality / Restaurant",
+  "Retail / E-commerce",
+  "Logistics & Transport",
+  "Construction",
+  "Engineering (Civil / Mechanical / Electrical)",
+  "Mining & Energy",
+  "Manufacturing",
+  "Beauty & Grooming (Barber / Salon)",
+  "Health & Wellness",
+  "Pharmacy / Medical Devices",
+  "Technology / Software / SaaS",
+  "Creative / Design / Media",
+  "Film, Music & Entertainment",
+  "Education / Training / EdTech",
+  "Professional Services (Consulting, Legal, Accounting)",
+  "Real Estate & Property",
+  "Financial Services / Fintech",
+  "Insurance",
+  "Automotive (Sales, Repair, EV)",
+  "Tourism & Travel",
+  "Events & Weddings",
+  "Sports & Fitness",
+  "Childcare / Early Learning",
+  "Non-Profit / NGO / NPO",
+  "Religious / Faith-based Organisation",
+  "Government / Public Sector Contractor",
+  "Import / Export & Trade",
+  "Telecommunications",
+  "Other",
 ];
 
 const STAGES = [
@@ -64,7 +90,7 @@ export default function Onboarding({ sessionId, onDone }) {
       <div className="relative max-w-3xl mx-auto px-6 py-12 md:py-20">
         <div className="flex items-center gap-2 mb-10">
           <Sparkle weight="fill" className="text-[#D4AF37]" size={22} />
-          <span className="font-display text-xl tracking-tight">Vula Engine</span>
+          <span className="font-display text-xl tracking-tight">Foundry</span>
           <span className="text-xs text-slate-500 font-mono ml-auto">step {step + 1} / 5</span>
         </div>
 

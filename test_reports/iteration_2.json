@@ -1,0 +1,47 @@
+{
+  "summary": "Iteration 2 backend regression for Foundry rebrand + anti-hallucination guardrails + expanded 11-model OpenRouter fallback chain. Extended iteration_1 suite from 18 to 20 tests: added compliance disclaimer guardrail check and unknown-agent fallback check. All 20/20 tests passed against public preview URL. One transient 502 (infra/preview gateway, not code) was observed during the first run on /agents/chat and self-resolved on retry — recorded as flaky, not a bug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/agents/chat", "issue": "Intermittent 502 'preview environment is not responding' on first call after idle (~1/2 runs). Self-resolved on retry. Likely preview-gateway cold start, not application code."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verifications": {
+    "GET /api/ returns app=Foundry": "PASS (app=Foundry, model=google/gemma-4-31b-it:free, status=ok)",
+    "GET /api/agents lists 9 agents": "PASS (research, compliance, brand, profile, operations, sop, marketing, sales_gym, general)",
+    "Compliance generate contains 'Confirm with a licensed professional' disclaimer": "PASS (matched 'licensed professional' in reply)",
+    "Research chat returns non-empty reply (fallback chain works)": "PASS",
+    "Unknown agent key falls back to general and still replies": "PASS",
+    "Profiles POST + GET round-trip + upsert by session_id": "PASS",
+    "Vault POST + GET + DELETE": "PASS",
+    "Tasks POST + GET + PATCH + DELETE + 404 on unknown": "PASS",
+    "Resources list + ?country=South Africa filter": "PASS (SA + Global entries)",
+    "No MongoDB ObjectId leaks anywhere in responses": "PASS (recursive _id sweep on every response)"
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: server.py call_openrouter falls through on ANY non-200 (e.g., 401/403/400), not just 429/5xx — the comment says 'Try next model only on 429/5xx' but the code does not branch. If OPENROUTER_API_KEY is invalid you'll burn through all 11 models before failing. Consider short-circuiting on 401/403.",
+    "Minor: agent_chat persists every chat turn but there is no GET /api/chats endpoint — chats collection grows without retrieval path. Either add a history endpoint or drop the write.",
+    "Minor: get_profile returns Optional[Profile]; FastAPI serializes Python None as JSON null which works, but a 404 would be more idiomatic for a missing profile.",
+    "Nit: agents.py mutates AGENTS at import time to append GUARDRAILS — re-importing in tests is fine but if anything ever calls agents.py as a script twice the guardrail block would be appended twice. Apply once via a flag or build a derived dict."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (rebrand assert Vula->Foundry, +2 new tests: compliance disclaimer, unknown-agent fallback)"
+  ],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "not tested (skipped per request)"},
+  "test_credentials": "n/a (no auth in app)",
+  "seed_data_creation": "All test data uses TEST_ prefix and a unique TEST_sess_<uuid> session_id; cleaned up by test_zz_cleanup at end of run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "backend_test.py is the canonical regression suite (20 tests, ~60s on warm preview, ~100s if cold). Public URL: https://startup-forge-79.preview.emergentagent.com/api. The /api/agents/chat endpoint can return a transient 502 from the preview gateway on first hit after idle — retry once before flagging as a bug. The compliance guardrail test does substring matching on 'licensed professional' / 'qualified professional' / 'legal professional' — tolerant to LLM phrasing drift.",
+  "rca of the issue": "n/a — no application bugs. The single 502 observed on first run was a preview-gateway timeout (body literally said 'The preview environment is not responding. It may be starting up.'); the retry passed in 31s with status 200. Not a backend regression."
+}

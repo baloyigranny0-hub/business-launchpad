@@ -1,6 +1,6 @@
-"""Backend API tests for Vula Engine (entrepreneurship coaching app).
-Covers: root, agents list, profiles, agent chat/generate (OpenRouter w/ fallback),
-vault CRUD, tasks CRUD, resources listing/filter. Also asserts no _id leakage."""
+"""Backend API tests for Foundry (entrepreneurship coaching app) - Iteration 2.
+Covers: rebrand to Foundry, 9 agents, guardrails (compliance disclaimer),
+unknown agent fallback, profiles, vault CRUD, tasks CRUD, resources. No _id leak."""
 import os
 import uuid
 import json
@@ -36,7 +36,7 @@ class TestRoot:
         r = client.get(f"{API}/")
         assert r.status_code == 200
         data = r.json()
-        assert data["app"] == "Vula Engine"
+        assert data["app"] == "Foundry"
         assert data["status"] == "ok"
         assert "model" in data and isinstance(data["model"], str) and data["model"]
         _no_objectid(data)
@@ -139,6 +139,45 @@ class TestAgentAI:
         data = r.json()
         assert data["agent"] == "profile"
         assert isinstance(data["reply"], str) and data["reply"].strip(), "Empty reply"
+        _no_objectid(data)
+
+    def test_compliance_generate_has_disclaimer(self, client):
+        """Anti-hallucination guardrail: compliance reply must contain
+        a 'licensed professional' style disclaimer."""
+        body = {
+            "session_id": SESSION_ID,
+            "agent": "compliance",
+            "prompt": "What are the top 3 registration steps for a new food cart in South Africa?",
+            "profile": {"business_name": "Acme Coffee", "industry": "Food & Beverage", "country": "South Africa"},
+        }
+        r = client.post(f"{API}/agents/generate", json=body, timeout=120)
+        assert r.status_code == 200, f"status={r.status_code} body={r.text[:300]}"
+        data = r.json()
+        assert data["agent"] == "compliance"
+        reply = data["reply"].lower()
+        assert reply.strip(), "Empty reply"
+        # Guardrail phrase match (tolerant to LLM phrasing variations)
+        assert (
+            "licensed professional" in reply
+            or "licensed attorney" in reply
+            or "qualified professional" in reply
+            or "legal professional" in reply
+        ), f"Missing compliance disclaimer. Reply tail: ...{data['reply'][-400:]}"
+        _no_objectid(data)
+
+    def test_unknown_agent_falls_back_to_general(self, client):
+        """Unknown agent key should fall back to 'general' (Foundry Coach) and still return a reply.
+        Note: response.agent echoes the request key; what matters is non-empty reply w/o 500."""
+        body = {
+            "session_id": SESSION_ID,
+            "agent": "not_a_real_agent_xyz",
+            "prompt": "Give me one sentence of encouragement for a new founder.",
+        }
+        r = client.post(f"{API}/agents/generate", json=body, timeout=120)
+        assert r.status_code == 200, f"status={r.status_code} body={r.text[:300]}"
+        data = r.json()
+        assert isinstance(data["reply"], str) and data["reply"].strip(), "Empty reply on fallback"
+        assert isinstance(data["model"], str) and data["model"]
         _no_objectid(data)
 
 

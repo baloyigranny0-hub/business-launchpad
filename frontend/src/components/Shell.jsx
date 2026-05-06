@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 import {
   Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault,
-  Sparkle, SignOut, ArrowsClockwise,
+  SignOut, ArrowsClockwise,
 } from "@phosphor-icons/react";
 import { ROOMS, SESSION_KEY } from "@/lib/api";
+import Logo from "@/components/Logo";
 
 const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault };
 
@@ -27,8 +28,7 @@ export default function Shell({ profile, setProfile, sessionId }) {
         className={`shrink-0 border-r border-white/5 flex flex-col transition-all duration-300 ${collapsed ? "w-[72px]" : "w-[260px]"}`}
       >
         <div className="px-5 py-5 flex items-center gap-2 border-b border-white/5">
-          <Sparkle weight="fill" className="text-[#D4AF37]" size={20} />
-          {!collapsed && <span className="font-display text-lg tracking-tight">Vula Engine</span>}
+          {collapsed ? <Logo size={22} withWord={false} /> : <Logo size={22} />}
           <button
             data-testid="sidebar-toggle"
             onClick={() => setCollapsed(!collapsed)}
@@ -115,6 +115,12 @@ export default function Shell({ profile, setProfile, sessionId }) {
 
         <div className="flex-1 px-6 md:px-10 py-8 overflow-x-hidden">
           <Outlet />
+          <div className="mt-12 pt-6 border-t border-white/5 flex flex-wrap items-center gap-4 text-xs text-slate-600">
+            <span>© {new Date().getFullYear()} Foundry</span>
+            <Link to="/privacy" data-testid="footer-privacy-link" className="hover:text-white">Privacy</Link>
+            <Link to="/terms" data-testid="footer-terms-link" className="hover:text-white">Terms</Link>
+            <span className="ml-auto">AI may make mistakes. Verify with a licensed professional.</span>
+          </div>
         </div>
       </main>
     </div>

@@ -2,6 +2,19 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, Lightning, Sparkle } from "@phosphor-icons/react";
 import { api } from "@/lib/api";
+import MicButton from "@/components/MicButton";
+
+const REGISTERED_OPTIONS = [
+  { v: "yes",    t: "Yes, registered",  d: "Has a legal entity" },
+  { v: "no",     t: "Not yet",          d: "Idea / pre-registration" },
+  { v: "unsure", t: "I'm not sure",     d: "Need help figuring it out" },
+];
+
+const KNOWLEDGE_LEVELS = [
+  { v: "beginner",     t: "New to this",       d: "Walk me through everything" },
+  { v: "intermediate", t: "I know some",       d: "Mostly comfortable" },
+  { v: "expert",       t: "Experienced",       d: "Skip the basics" },
+];
 
 const INDUSTRIES = [
   "Agriculture & Farming",
@@ -58,6 +71,9 @@ export default function Onboarding({ sessionId, onDone }) {
     stage: "idea",
     idea: "",
     target_customer: "",
+    is_registered: "no",
+    knowledge_level: "beginner",
+    biggest_blocker: "",
   });
   const [saving, setSaving] = useState(false);
   const update = (k, v) => setForm({ ...form, [k]: v });
@@ -117,34 +133,88 @@ export default function Onboarding({ sessionId, onDone }) {
           )}
           {step === 2 && (
             <Block title="Where are you right now?" sub="No wrong answer. Honesty makes the coach sharper.">
-              <div className="grid sm:grid-cols-2 gap-3 mt-2">
-                {STAGES.map((s) => (
-                  <button
-                    key={s.v}
-                    data-testid={`onboarding-stage-${s.v}`}
-                    onClick={() => update("stage", s.v)}
-                    className={`text-left p-5 rounded-xl border transition ${
-                      form.stage === s.v
-                        ? "border-[#D4AF37] bg-[#D4AF37]/10"
-                        : "border-white/10 hover:border-white/25 bg-[#131B2B]"
-                    }`}
-                  >
-                    <div className="font-display text-lg">{s.t}</div>
-                  </button>
-                ))}
+              <div className="space-y-5">
+                <div>
+                  <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Stage</div>
+                  <div className="grid sm:grid-cols-2 gap-2 sm:gap-3">
+                    {STAGES.map((s) => (
+                      <button
+                        key={s.v}
+                        data-testid={`onboarding-stage-${s.v}`}
+                        onClick={() => update("stage", s.v)}
+                        className={`text-left p-3 sm:p-4 rounded-xl border transition ${
+                          form.stage === s.v
+                            ? "border-[#D4AF37] bg-[#D4AF37]/10"
+                            : "border-white/10 hover:border-white/25 bg-[#131B2B]"
+                        }`}
+                      >
+                        <div className="font-display text-base sm:text-lg">{s.t}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Is your business registered?</div>
+                  <div className="grid sm:grid-cols-3 gap-2">
+                    {REGISTERED_OPTIONS.map((o) => (
+                      <button
+                        key={o.v}
+                        data-testid={`onboarding-registered-${o.v}`}
+                        onClick={() => update("is_registered", o.v)}
+                        className={`text-left p-3 rounded-xl border transition ${
+                          form.is_registered === o.v
+                            ? "border-[#38BDF8] bg-[#38BDF8]/10"
+                            : "border-white/10 hover:border-white/25 bg-[#131B2B]"
+                        }`}
+                      >
+                        <div className="font-display text-sm sm:text-base">{o.t}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{o.d}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">How well do you know business basics?</div>
+                  <div className="grid sm:grid-cols-3 gap-2">
+                    {KNOWLEDGE_LEVELS.map((o) => (
+                      <button
+                        key={o.v}
+                        data-testid={`onboarding-knowledge-${o.v}`}
+                        onClick={() => update("knowledge_level", o.v)}
+                        className={`text-left p-3 rounded-xl border transition ${
+                          form.knowledge_level === o.v
+                            ? "border-[#34D399] bg-[#34D399]/10"
+                            : "border-white/10 hover:border-white/25 bg-[#131B2B]"
+                        }`}
+                      >
+                        <div className="font-display text-sm sm:text-base">{o.t}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{o.d}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </Block>
           )}
           {step === 3 && (
-            <Block title="Describe the idea in plain words" sub="One short paragraph. What is the product, who is it for, why now?">
-              <textarea
-                data-testid="onboarding-idea-textarea"
-                value={form.idea}
-                onChange={(e) => update("idea", e.target.value)}
-                rows={5}
-                placeholder="e.g. Pure raw honey from highveld beekeepers, sold in 500g jars to wellness retailers in Joburg…"
-                className="w-full bg-[#131B2B] border border-white/10 rounded-xl p-4 outline-none focus:border-[#D4AF37] text-base leading-relaxed"
-              />
+            <Block title="Describe the idea in plain words" sub="One short paragraph. Tap the mic to speak it instead of typing.">
+              <div className="relative">
+                <textarea
+                  data-testid="onboarding-idea-textarea"
+                  value={form.idea}
+                  onChange={(e) => update("idea", e.target.value)}
+                  rows={5}
+                  placeholder="e.g. Pure raw honey from highveld beekeepers, sold in 500g jars to wellness retailers in Joburg…"
+                  className="w-full bg-[#131B2B] border border-white/10 rounded-xl p-4 pr-14 outline-none focus:border-[#D4AF37] text-base leading-relaxed"
+                />
+                <div className="absolute right-2 top-2">
+                  <MicButton
+                    testid="onboarding-idea-mic"
+                    color="#D4AF37"
+                    onPush={(text) => update("idea", (form.idea ? form.idea + " " : "") + text)}
+                  />
+                </div>
+              </div>
               <input
                 data-testid="onboarding-target-input"
                 value={form.target_customer}
@@ -152,17 +222,37 @@ export default function Onboarding({ sessionId, onDone }) {
                 placeholder="Who is the target customer? (optional)"
                 className="mt-3 w-full bg-[#131B2B] border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-[#D4AF37]"
               />
+              <div className="mt-3 relative">
+                <textarea
+                  data-testid="onboarding-blocker-textarea"
+                  value={form.biggest_blocker}
+                  onChange={(e) => update("biggest_blocker", e.target.value)}
+                  rows={2}
+                  placeholder="What's the biggest thing slowing you down right now? (optional)"
+                  className="w-full bg-[#131B2B] border border-white/10 rounded-xl p-4 pr-14 outline-none focus:border-[#D4AF37] text-base leading-relaxed"
+                />
+                <div className="absolute right-2 top-2">
+                  <MicButton
+                    testid="onboarding-blocker-mic"
+                    color="#38BDF8"
+                    onPush={(text) => update("biggest_blocker", (form.biggest_blocker ? form.biggest_blocker + " " : "") + text)}
+                  />
+                </div>
+              </div>
             </Block>
           )}
           {step === 4 && (
             <Block title="Ready to walk in?" sub="The agents will tailor every room to this profile.">
-              <div className="card p-6 space-y-2 text-slate-300">
+              <div className="card p-5 sm:p-6 space-y-2 text-slate-300">
                 <Row k="Business" v={form.business_name} />
                 <Row k="Industry" v={form.industry} />
                 <Row k="Country" v={form.country} />
                 <Row k="Stage" v={STAGES.find(s => s.v === form.stage)?.t} />
+                <Row k="Registered" v={REGISTERED_OPTIONS.find(o => o.v === form.is_registered)?.t} />
+                <Row k="Level" v={KNOWLEDGE_LEVELS.find(o => o.v === form.knowledge_level)?.t} />
                 <Row k="Idea" v={form.idea} />
                 {form.target_customer && <Row k="Target" v={form.target_customer} />}
+                {form.biggest_blocker && <Row k="Blocker" v={form.biggest_blocker} />}
               </div>
             </Block>
           )}

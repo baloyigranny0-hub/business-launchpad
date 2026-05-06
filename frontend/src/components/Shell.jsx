@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Outlet, NavLink, useLocation, Link } from "react-router-dom";
 import {
-  Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault,
+  Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold,
   SignOut, ArrowsClockwise, List, X,
 } from "@phosphor-icons/react";
 import { ROOMS, SESSION_KEY } from "@/lib/api";
 import Logo from "@/components/Logo";
 
-const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault };
+const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold };
 
 function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profile, onReset }) {
   const isDesktop = variant === "desktop";

@@ -17,6 +17,7 @@ export function getSessionId() {
 }
 
 export const ROOMS = [
+  { key: "journey",   name: "Your Journey",      sub: "Personalized roadmap",   icon: "MapTrifold",    agent: null,         color: "#D4AF37" },
   { key: "briefing",  name: "Briefing Room",     sub: "Ideation & Strategy",   icon: "Compass",       agent: "research",   color: "#38BDF8" },
   { key: "legal",     name: "Legal Desk",        sub: "Compliance Roadmap",    icon: "Scales",        agent: "compliance", color: "#D4AF37" },
   { key: "design",    name: "Design Studio",     sub: "Brand & Profile",       icon: "PaintBrush",    agent: "brand",      color: "#F472B6" },

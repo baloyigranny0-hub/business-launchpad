@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { api, getSessionId } from "@/lib/api";
 import Onboarding from "@/components/Onboarding";
 import Shell from "@/components/Shell";
+import Journey from "@/rooms/Journey";
 import Briefing from "@/rooms/Briefing";
 import Legal from "@/rooms/Legal";
 import Design from "@/rooms/Design";
@@ -33,7 +34,6 @@ export default function App() {
     return () => ac.abort();
   }, [sessionId]);
 
-  // Always allow legal pages without onboarding
   const onLegal = PathIs("/privacy") || PathIs("/terms");
 
   if (!loaded && !onLegal) {
@@ -53,7 +53,8 @@ export default function App() {
           <Route path="*" element={<Onboarding sessionId={sessionId} onDone={(p) => setProfile(p)} />} />
         ) : (
           <Route element={<Shell profile={profile} setProfile={setProfile} sessionId={sessionId} />}>
-            <Route path="/" element={<Navigate to="/briefing" replace />} />
+            <Route path="/" element={<Navigate to="/journey" replace />} />
+            <Route path="/journey"   element={<Journey   profile={profile} sessionId={sessionId} />} />
             <Route path="/briefing"  element={<Briefing  profile={profile} sessionId={sessionId} />} />
             <Route path="/legal"     element={<Legal     profile={profile} sessionId={sessionId} />} />
             <Route path="/design"    element={<Design    profile={profile} sessionId={sessionId} />} />
@@ -61,7 +62,7 @@ export default function App() {
             <Route path="/ops"       element={<Ops       profile={profile} sessionId={sessionId} />} />
             <Route path="/salesgym"  element={<SalesGym  profile={profile} sessionId={sessionId} />} />
             <Route path="/vault"     element={<Vault     profile={profile} sessionId={sessionId} />} />
-            <Route path="*" element={<Navigate to="/briefing" replace />} />
+            <Route path="*" element={<Navigate to="/journey" replace />} />
           </Route>
         )}
       </Routes>

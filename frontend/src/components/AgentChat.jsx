@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { PaperPlaneRight, FloppyDisk, Sparkle, CircleNotch, Lightning } from "@phosphor-icons/react";
 import { api } from "@/lib/api";
 import Markdown from "@/components/Markdown";
+import MicButton from "@/components/MicButton";
 
 export default function AgentChat({
   agentKey,
@@ -134,6 +135,11 @@ export default function AgentChat({
           rows={1}
           placeholder="Type a message…"
           className="flex-1 resize-none bg-transparent outline-none text-white placeholder:text-slate-600 text-sm py-2"
+        />
+        <MicButton
+          testid={`chat-mic-${agentKey}`}
+          color={accent}
+          onPush={(text) => setInput((prev) => (prev ? prev + " " : "") + text)}
         />
         <button
           data-testid={`chat-send-${agentKey}`}

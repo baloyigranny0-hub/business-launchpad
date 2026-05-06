@@ -33,9 +33,17 @@ OPENROUTER_FALLBACKS = [
     "nvidia/nemotron-3-super-120b-a12b:free",
     "nvidia/nemotron-3-nano-30b-a3b:free",
     "nvidia/nemotron-nano-9b-v2:free",
+    "deepseek/deepseek-chat-v3.1:free",
+    "qwen/qwen3-coder:free",
     "openrouter/auto",                             # last-ditch auto router
 ]
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# Optional Ollama provider (self-hosted or Ollama Cloud). Only used if OLLAMA_BASE_URL is set.
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "").rstrip("/")
+OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "")
+# Comma-separated list, e.g. "llama3.2:3b,nemotron3:33b,deepseek-v4-pro:cloud,gpt-oss:20b,qwen3:14b"
+OLLAMA_MODELS = [m.strip() for m in os.environ.get("OLLAMA_MODELS", "").split(",") if m.strip()]
 
 app = FastAPI(title="Foundry API")
 api_router = APIRouter(prefix="/api")
@@ -58,6 +66,10 @@ class Profile(BaseModel):
     stage: str = "idea"  # idea, registered, operating, scaling
     idea: str = ""
     target_customer: str = ""
+    # Diagnostic intake (drives the Journey)
+    is_registered: str = "no"   # yes | no | unsure
+    knowledge_level: str = "beginner"  # beginner | intermediate | expert
+    biggest_blocker: str = ""
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -69,6 +81,9 @@ class ProfileCreate(BaseModel):
     stage: str = "idea"
     idea: str = ""
     target_customer: str = ""
+    is_registered: str = "no"
+    knowledge_level: str = "beginner"
+    biggest_blocker: str = ""
 
 
 class ChatMessage(BaseModel):
@@ -131,8 +146,8 @@ class TaskUpdate(BaseModel):
     done: bool
 
 
-# ------------------------- OpenRouter helper -------------------------
-async def call_openrouter(messages: List[Dict[str, str]], temperature: float = 0.7) -> tuple[str, str]:
+# ------------------------- AI provider chain -------------------------
+async def _try_openrouter(ac: httpx.AsyncClient, messages, temperature: float):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -140,36 +155,89 @@ async def call_openrouter(messages: List[Dict[str, str]], temperature: float = 0
         "X-Title": "Foundry",
     }
     last_err = None
-    async with httpx.AsyncClient(timeout=90.0) as ac:
-        for model in OPENROUTER_FALLBACKS:
-            payload = {"model": model, "messages": messages, "temperature": temperature}
+    for model in OPENROUTER_FALLBACKS:
+        payload = {"model": model, "messages": messages, "temperature": temperature}
+        try:
+            r = await ac.post(OPENROUTER_URL, headers=headers, json=payload, timeout=45.0)
+        except Exception as e:
+            last_err = f"{model} network: {e}"
+            continue
+        if r.status_code == 200:
             try:
-                r = await ac.post(OPENROUTER_URL, headers=headers, json=payload)
-            except Exception as e:
-                last_err = str(e)
-                continue
-            if r.status_code == 200:
-                try:
-                    data = r.json()
-                    content = data["choices"][0]["message"]["content"]
-                    if content and content.strip():
-                        return content, model
-                except (KeyError, IndexError, ValueError):
-                    last_err = f"malformed response from {model}"
-                    continue
-            else:
-                last_err = f"{model} -> {r.status_code}: {r.text[:150]}"
-                logger.warning(f"OpenRouter fallback: {last_err}")
-                # Try next model only on 429/5xx; other errors also fall through
-                continue
-    raise HTTPException(status_code=502, detail=f"All free models busy. Last: {last_err}")
+                data = r.json()
+                content = data["choices"][0]["message"]["content"]
+                if content and content.strip():
+                    return content, model
+                last_err = f"{model} empty"
+            except (KeyError, IndexError, ValueError):
+                last_err = f"malformed response from {model}"
+        elif r.status_code in (401, 403):
+            # Bad key / forbidden: don't burn the rest of the chain on the same key
+            return None, f"openrouter_auth:{r.status_code}"
+        else:
+            last_err = f"{model} -> {r.status_code}: {r.text[:120]}"
+            logger.warning(f"OpenRouter fallback: {last_err}")
+    return None, last_err or "openrouter_all_failed"
+
+
+async def _try_ollama(ac: httpx.AsyncClient, messages, temperature: float):
+    if not OLLAMA_BASE_URL or not OLLAMA_MODELS:
+        return None, "ollama_disabled"
+    headers = {"Content-Type": "application/json"}
+    if OLLAMA_API_KEY:
+        headers["Authorization"] = f"Bearer {OLLAMA_API_KEY}"
+    last_err = None
+    # Use Ollama's OpenAI-compatible endpoint for unified payload shape
+    url = f"{OLLAMA_BASE_URL}/v1/chat/completions"
+    for model in OLLAMA_MODELS:
+        payload = {"model": model, "messages": messages, "temperature": temperature, "stream": False}
+        try:
+            r = await ac.post(url, headers=headers, json=payload, timeout=60.0)
+        except Exception as e:
+            last_err = f"ollama:{model} net: {e}"
+            continue
+        if r.status_code == 200:
+            try:
+                data = r.json()
+                content = data["choices"][0]["message"]["content"]
+                if content and content.strip():
+                    return content, f"ollama/{model}"
+            except (KeyError, IndexError, ValueError):
+                last_err = f"ollama:{model} malformed"
+        else:
+            last_err = f"ollama:{model} -> {r.status_code}: {r.text[:120]}"
+            logger.warning(last_err)
+    return None, last_err or "ollama_all_failed"
+
+
+async def call_ai(messages: List[Dict[str, str]], temperature: float = 0.7) -> tuple[str, str]:
+    """Try OpenRouter free chain; fall back to Ollama if configured."""
+    async with httpx.AsyncClient() as ac:
+        content, info = await _try_openrouter(ac, messages, temperature)
+        if content:
+            return content, info
+        # If auth failed, don't bother retrying OpenRouter elsewhere; try Ollama if set
+        ocontent, oinfo = await _try_ollama(ac, messages, temperature)
+        if ocontent:
+            return ocontent, oinfo
+        raise HTTPException(
+            status_code=502,
+            detail=f"All free models busy or unavailable. openrouter={info} ollama={oinfo}",
+        )
+
+
+# Backwards-compat alias used elsewhere in the file
+call_openrouter = call_ai
 
 
 def build_profile_context(profile: Optional[Dict[str, Any]]) -> str:
     if not profile:
         return ""
     bits = []
-    for k in ("business_name", "industry", "country", "stage", "idea", "target_customer"):
+    for k in (
+        "business_name", "industry", "country", "stage", "idea", "target_customer",
+        "is_registered", "knowledge_level", "biggest_blocker",
+    ):
         v = profile.get(k)
         if v:
             bits.append(f"{k.replace('_', ' ').title()}: {v}")
@@ -210,6 +278,80 @@ async def get_profile(session_id: str):
     if not doc:
         return None
     return Profile(**doc)
+
+
+# ----- Journey (personalized roadmap) -----
+class JourneyRequest(BaseModel):
+    session_id: str
+    profile: Dict[str, Any]
+
+
+JOURNEY_SYSTEM = (
+    "You are the Foundry Journey Architect. Build a personalized founder roadmap.\n"
+    "Output STRICT JSON only — no markdown, no commentary. Schema:\n"
+    "{\"summary\": str, \"buckets\": ["
+    "{\"label\": \"Today\"|\"This Week\"|\"This Month\"|\"Next Quarter\","
+    " \"items\": [{\"title\": str, \"why\": str, \"room\": one of "
+    "(briefing|legal|design|marketing|ops|salesgym|vault), \"effort\": \"low\"|\"med\"|\"high\"}]}]}\n"
+    "Rules:\n"
+    "- Tailor depth to knowledge_level (beginner=hand-holding, expert=concise).\n"
+    "- If is_registered='no' or 'unsure', Today/This Week MUST include the registration step (legal room).\n"
+    "- If is_registered='yes', skip basic registration; focus on POST-registration milestones.\n"
+    "- 3 items per bucket max. 4 buckets total.\n"
+    "- Never invent statute numbers or URLs. Use general principles.\n"
+    "- 8-year-old logic. Short titles. One-sentence why.\n"
+    "- Return ONLY the JSON object, starting with { and ending with }."
+)
+
+
+@api_router.post("/journey")
+async def generate_journey(req: JourneyRequest):
+    import json as _json
+    profile_ctx = build_profile_context(req.profile)
+    user_prompt = (
+        f"Build the journey for this founder.\n{profile_ctx}\n"
+        f"Biggest blocker: {req.profile.get('biggest_blocker') or '(not stated)'}\n"
+        "Return JSON only."
+    )
+    msgs = [
+        {"role": "system", "content": JOURNEY_SYSTEM},
+        {"role": "user", "content": user_prompt},
+    ]
+    raw, used_model = await call_ai(msgs, temperature=0.4)
+    # Best-effort JSON extraction
+    text = raw.strip()
+    if text.startswith("```"):
+        # strip markdown fences
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+    # find first { and last }
+    s, e = text.find("{"), text.rfind("}")
+    if s != -1 and e != -1 and e > s:
+        text = text[s:e + 1]
+    try:
+        plan = _json.loads(text)
+    except Exception as ex:
+        logger.error(f"Journey JSON parse failed: {ex}; raw={raw[:300]}")
+        # graceful fallback
+        plan = {
+            "summary": "Couldn't parse the AI plan. Here's a safe default — try again in a moment.",
+            "buckets": [
+                {"label": "Today", "items": [
+                    {"title": "Pick the one customer you want first", "why": "Clarity beats strategy.", "room": "briefing", "effort": "low"}
+                ]},
+                {"label": "This Week", "items": [
+                    {"title": "Draft your one-line value proposition", "why": "You'll reuse it everywhere.", "room": "design", "effort": "low"}
+                ]},
+                {"label": "This Month", "items": [
+                    {"title": "Map the compliance steps for your country", "why": "Avoid surprises later.", "room": "legal", "effort": "med"}
+                ]},
+                {"label": "Next Quarter", "items": [
+                    {"title": "Land your first 3 paying customers", "why": "Revenue is the only validation.", "room": "marketing", "effort": "high"}
+                ]},
+            ],
+        }
+    return {"plan": plan, "model": used_model}
 
 
 # ----- Chat / generate -----

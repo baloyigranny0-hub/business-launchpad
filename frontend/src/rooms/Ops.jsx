@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { GearSix, Plus, Check, Trash } from "@phosphor-icons/react";
 import AgentChat from "@/components/AgentChat";
 import RoomHeader, { RoomGrid, ChatCol, SideCol, InfoCard } from "@/components/RoomHeader";
@@ -9,8 +9,12 @@ export default function Ops({ profile, sessionId }) {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
 
-  const load = () => api.get(`/tasks/${sessionId}`).then(r => setTasks(r.data || []));
-  useEffect(() => { load(); }, [sessionId]);
+  const load = useCallback(
+    () => api.get(`/tasks/${sessionId}`).then(r => setTasks(r.data || []))
+      .catch((e) => console.error("Tasks load failed:", e)),
+    [sessionId]
+  );
+  useEffect(() => { load(); }, [load]);
 
   const add = async (e) => {
     e.preventDefault();

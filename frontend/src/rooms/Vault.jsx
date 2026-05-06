@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Vault as VaultIcon, Trash, DownloadSimple, Eye } from "@phosphor-icons/react";
 import RoomHeader from "@/components/RoomHeader";
 import Markdown from "@/components/Markdown";
@@ -8,8 +8,12 @@ export default function Vault({ profile, sessionId }) {
   const [docs, setDocs] = useState([]);
   const [active, setActive] = useState(null);
 
-  const load = () => api.get(`/vault/${sessionId}`).then(r => setDocs(r.data || []));
-  useEffect(() => { load(); }, [sessionId]);
+  const load = useCallback(
+    () => api.get(`/vault/${sessionId}`).then(r => setDocs(r.data || []))
+      .catch((e) => console.error("Vault load failed:", e)),
+    [sessionId]
+  );
+  useEffect(() => { load(); }, [load]);
 
   const remove = async (id) => {
     if (!window.confirm("Delete this document?")) return;

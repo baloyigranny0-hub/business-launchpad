@@ -23,10 +23,14 @@ export default function App() {
   const sessionId = getSessionId();
 
   useEffect(() => {
-    api.get(`/profiles/${sessionId}`).then(r => {
-      setProfile(r.data || null);
-      setLoaded(true);
-    }).catch(() => setLoaded(true));
+    const ac = new AbortController();
+    api.get(`/profiles/${sessionId}`, { signal: ac.signal })
+      .then((r) => { setProfile(r.data || null); setLoaded(true); })
+      .catch((err) => {
+        if (err?.name !== "CanceledError") console.error("Profile load failed:", err);
+        setLoaded(true);
+      });
+    return () => ac.abort();
   }, [sessionId]);
 
   // Always allow legal pages without onboarding

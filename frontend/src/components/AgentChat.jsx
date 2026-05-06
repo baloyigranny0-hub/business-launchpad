@@ -24,10 +24,10 @@ export default function AgentChat({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages.length, loading]);
 
   useEffect(() => {
-    if (!loading) { setElapsed(0); return; }
+    if (!loading) { setElapsed(0); return undefined; }
     const t = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, [loading]);

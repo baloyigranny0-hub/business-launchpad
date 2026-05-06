@@ -9,7 +9,7 @@ export default function Legal({ profile, sessionId }) {
   useEffect(() => {
     api.get(`/resources`, { params: { country: profile.country } })
       .then(r => setResources(r.data || []))
-      .catch(() => setResources([]));
+      .catch((e) => { console.error("Resources load failed:", e); setResources([]); });
   }, [profile.country]);
 
   const intro = `Welcome to the **Legal Desk**. I'm the Compliance Scout. Ask me to map the full lifecycle for **${profile.industry}** in **${profile.country}** — from foundation to growth.`;

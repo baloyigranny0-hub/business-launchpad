@@ -180,11 +180,3 @@ export default function Shell({ profile, setProfile, sessionId }) {
     </div>
   );
 }
-with a licensed professional.</span>
-          </div>
-          <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
-        </div>
-      </main>
-    </div>
-  );
-}

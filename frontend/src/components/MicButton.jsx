@@ -29,10 +29,20 @@ export default function MicButton({ onPush, color = "#D4AF37", testid = "mic-btn
     };
     r.onerror = () => setListening(false);
     recRef.current = r;
-    try { r.start(); setListening(true); } catch (_) { setListening(false); }
+    try {
+      r.start();
+      setListening(true);
+    } catch (err) {
+      console.warn("Mic start failed:", err?.message || err);
+      setListening(false);
+    }
   };
 
-  const stop = () => { try { recRef.current?.stop(); } catch (_) {} setListening(false); };
+  const stop = () => {
+    try { recRef.current?.stop(); }
+    catch (err) { console.debug("Mic stop failed:", err?.message || err); }
+    setListening(false);
+  };
 
   return (
     <button

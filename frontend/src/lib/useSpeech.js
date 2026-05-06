@@ -12,7 +12,7 @@ export default function useSpeech({ lang = "en-US", interim = true } = {}) {
   const [transcript, setTranscript] = useState("");
 
   useEffect(() => {
-    if (!SR) return;
+    if (!SR) return undefined;
     const r = new SR();
     r.continuous = true;
     r.interimResults = interim;
@@ -23,20 +23,32 @@ export default function useSpeech({ lang = "en-US", interim = true } = {}) {
       setTranscript((prev) => (prev + " " + t).trim());
     };
     r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
+    r.onerror = (err) => {
+      console.warn("SpeechRecognition error:", err?.error || err);
+      setListening(false);
+    };
     recRef.current = r;
-    return () => { try { r.stop(); } catch (_) {} };
+    return () => {
+      try { r.stop(); }
+      catch (err) { console.debug("SR stop on cleanup:", err?.message || err); }
+    };
   }, [SR, interim, lang]);
 
   const start = useCallback(() => {
     if (!recRef.current || listening) return;
     setTranscript("");
-    try { recRef.current.start(); setListening(true); } catch (_) {}
+    try {
+      recRef.current.start();
+      setListening(true);
+    } catch (err) {
+      console.warn("SR start failed:", err?.message || err);
+    }
   }, [listening]);
 
   const stop = useCallback(() => {
     if (!recRef.current) return;
-    try { recRef.current.stop(); } catch (_) {}
+    try { recRef.current.stop(); }
+    catch (err) { console.debug("SR stop failed:", err?.message || err); }
     setListening(false);
   }, []);
 

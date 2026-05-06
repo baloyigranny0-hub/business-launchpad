@@ -35,7 +35,7 @@ export default function Vault({ profile, sessionId }) {
         accent="#A78BFA" icon={VaultIcon}
       />
 
-      <div className="grid lg:grid-cols-5 gap-6">
+      <div className="grid lg:grid-cols-5 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-2">
           {docs.length === 0 && (
             <div className="card p-8 text-center text-slate-500">

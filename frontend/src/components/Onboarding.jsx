@@ -103,7 +103,7 @@ export default function Onboarding({ sessionId, onDone }) {
                 value={form.business_name}
                 onChange={(e) => update("business_name", e.target.value)}
                 placeholder="e.g. Sunrise Honey Co."
-                className="w-full bg-transparent border-b border-white/15 focus:border-[#D4AF37] outline-none py-3 font-display text-3xl md:text-5xl tracking-tight placeholder:text-slate-700"
+                className="w-full bg-transparent border-b border-white/15 focus:border-[#D4AF37] outline-none py-3 font-display text-2xl sm:text-3xl md:text-5xl tracking-tight placeholder:text-slate-700"
               />
             </Block>
           )}
@@ -167,7 +167,7 @@ export default function Onboarding({ sessionId, onDone }) {
             </Block>
           )}
 
-          <div className="flex items-center justify-between mt-10">
+          <div className="flex items-center justify-between mt-8 sm:mt-10 gap-3">
             <button data-testid="onboarding-back-btn" onClick={back} disabled={step === 0}
               className="text-slate-400 hover:text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed">
               ← Back
@@ -177,7 +177,7 @@ export default function Onboarding({ sessionId, onDone }) {
                 data-testid="onboarding-next-btn"
                 onClick={next}
                 disabled={!canNext()}
-                className="group flex items-center gap-2 bg-[#D4AF37] text-[#0A0F1A] font-semibold px-6 py-3 rounded-full disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 transition"
+                className="group flex items-center gap-2 bg-[#D4AF37] text-[#0A0F1A] font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-sm sm:text-base disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 transition"
               >
                 Continue <ArrowRight weight="bold" size={18} />
               </button>
@@ -186,9 +186,9 @@ export default function Onboarding({ sessionId, onDone }) {
                 data-testid="onboarding-submit-btn"
                 onClick={submit}
                 disabled={saving}
-                className="flex items-center gap-2 bg-[#D4AF37] text-[#0A0F1A] font-semibold px-6 py-3 rounded-full hover:brightness-110 transition glow-gold"
+                className="flex items-center gap-2 bg-[#D4AF37] text-[#0A0F1A] font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-sm sm:text-base hover:brightness-110 transition glow-gold"
               >
-                {saving ? "Opening doors…" : (<>Enter Vula <Lightning weight="fill" size={18} /></>)}
+                {saving ? "Opening doors…" : (<>Enter Foundry <Lightning weight="fill" size={18} /></>)}
               </button>
             )}
           </div>
@@ -202,9 +202,9 @@ function Block({ title, sub, children }) {
   return (
     <div className="space-y-5">
       <div>
-        <div className="text-xs uppercase tracking-[0.25em] text-slate-500 mb-3">Onboarding</div>
-        <h1 className="font-display text-3xl md:text-5xl tracking-tight leading-[1.05]">{title}</h1>
-        <p className="text-slate-400 mt-2 max-w-xl">{sub}</p>
+        <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-500 mb-2 sm:mb-3">Onboarding</div>
+        <h1 className="font-display text-2xl sm:text-3xl md:text-5xl tracking-tight leading-[1.1] sm:leading-[1.05]">{title}</h1>
+        <p className="text-slate-400 mt-2 max-w-xl text-sm sm:text-base">{sub}</p>
       </div>
       <div>{children}</div>
     </div>

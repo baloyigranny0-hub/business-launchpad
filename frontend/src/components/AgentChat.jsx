@@ -70,27 +70,28 @@ export default function AgentChat({
   };
 
   return (
-    <div className="card p-0 overflow-hidden flex flex-col h-[640px]" data-testid={`chat-${agentKey}`}>
-      <div className="px-5 py-4 border-b border-white/5 flex items-center gap-3">
+    <div className="card p-0 overflow-hidden flex flex-col h-[70vh] min-h-[480px] sm:h-[640px] sm:min-h-[640px]" data-testid={`chat-${agentKey}`}>
+      <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-white/5 flex items-center gap-2 sm:gap-3">
         <Sparkle weight="fill" style={{ color: accent }} />
-        <div>
-          <div className="font-display text-lg">{agentName}</div>
-          <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">live agent · gemma 4 free</div>
+        <div className="min-w-0">
+          <div className="font-display text-base sm:text-lg truncate">{agentName}</div>
+          <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] sm:tracking-[0.2em] text-slate-500 truncate">live agent · gemma 4 free</div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 shrink-0">
           <button
             data-testid={`save-vault-${agentKey}`}
             onClick={saveLast}
-            className="text-xs text-slate-400 hover:text-[#D4AF37] flex items-center gap-1"
+            className="text-[11px] sm:text-xs text-slate-400 hover:text-[#D4AF37] flex items-center gap-1"
             title="Save last reply to Vault"
           >
             <FloppyDisk size={14} />
-            {savedFlash ? "Saved!" : "Save to Vault"}
+            <span className="hidden sm:inline">{savedFlash ? "Saved!" : "Save to Vault"}</span>
+            <span className="sm:hidden">{savedFlash ? "✓" : "Save"}</span>
           </button>
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 sm:py-5 space-y-3 sm:space-y-4">
         {messages.map((m, i) => (
           <Bubble key={i} role={m.role} content={m.content} accent={accent} />
         ))}
@@ -104,15 +105,15 @@ export default function AgentChat({
       </div>
 
       {starters.length > 0 && messages.filter(m => m.role === "user").length === 0 && (
-        <div className="px-5 pb-3 flex flex-wrap gap-2">
+        <div className="px-4 sm:px-5 pb-3 flex flex-wrap gap-1.5 sm:gap-2">
           {starters.map((s, i) => (
             <button
               key={i}
               data-testid={`starter-${agentKey}-${i}`}
               onClick={() => send(s)}
-              className="text-xs px-3 py-1.5 rounded-full border border-white/10 hover:border-white/30 hover:bg-white/5 text-slate-300 flex items-center gap-1"
+              className="text-[11px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-white/10 hover:border-white/30 hover:bg-white/5 text-slate-300 flex items-center gap-1"
             >
-              <Lightning size={12} weight="fill" style={{ color: accent }} /> {s}
+              <Lightning size={11} weight="fill" style={{ color: accent }} /> {s}
             </button>
           ))}
         </div>
@@ -120,7 +121,8 @@ export default function AgentChat({
 
       <form
         onSubmit={(e) => { e.preventDefault(); send(); }}
-        className="px-4 py-3 border-t border-white/5 flex items-end gap-2"
+        className="px-3 sm:px-4 py-3 border-t border-white/5 flex items-end gap-2"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
       >
         <textarea
           data-testid={`chat-input-${agentKey}`}

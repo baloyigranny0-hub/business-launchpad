@@ -32,6 +32,20 @@ html, body, #root {
   font-family: 'Manrope', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+/* iOS: don't auto-zoom inputs (font >= 16px) */
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
+/* Larger touch targets on mobile */
+@media (max-width: 640px) {
+  button, a[role="button"], [data-testid*="-btn"] { min-height: 36px; }
 }
 
 ::selection { background: var(--gold); color: var(--bg); }

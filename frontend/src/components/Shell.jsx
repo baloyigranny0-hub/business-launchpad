@@ -132,7 +132,7 @@ export default function Shell({ profile, setProfile, sessionId }) {
   const sidebarProps = { collapsed, setCollapsed, setDrawerOpen, profile, onReset: reset };
 
   return (
-    <div className="min-h-screen lg:flex bg-[#0A0F1A] text-white">
+    <div className="min-h-screen lg:flex bg-[#0A0F1A] text-white" style={{ minHeight: "100dvh" }}>
       {/* Desktop sidebar */}
       <aside
         data-testid="sidebar"

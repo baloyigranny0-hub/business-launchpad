@@ -82,7 +82,7 @@ export default function Onboarding({ sessionId, onDone }) {
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-[#0A0F1A] text-white">
+    <div className="min-h-screen w-full relative overflow-hidden bg-[#0A0F1A] text-white" style={{ minHeight: "100dvh" }}>
       <div className="absolute inset-0 dot-grid opacity-40" />
       <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full" style={{ background: "radial-gradient(circle, rgba(212,175,55,0.18), transparent 60%)" }} />
       <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full" style={{ background: "radial-gradient(circle, rgba(56,189,248,0.14), transparent 60%)" }} />

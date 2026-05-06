@@ -43,7 +43,7 @@ export default function Design({ profile, sessionId }) {
         accent="#F472B6" icon={PaintBrush}
       />
 
-      <div className="mb-5 inline-flex p-1 rounded-full border border-white/10 bg-[#131B2B]">
+      <div className="mb-4 sm:mb-5 inline-flex p-1 rounded-full border border-white/10 bg-[#131B2B] max-w-full overflow-x-auto">
         <Tab v="brand"   t="Brand Agent"    active={tab} setActive={setTab} />
         <Tab v="profile" t="Profile Builder" active={tab} setActive={setTab} />
       </div>

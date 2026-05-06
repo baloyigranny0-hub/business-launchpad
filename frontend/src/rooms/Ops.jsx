@@ -34,7 +34,7 @@ export default function Ops({ profile, sessionId }) {
         accent="#FBBF24" icon={GearSix}
       />
 
-      <div className="mb-5 inline-flex p-1 rounded-full border border-white/10 bg-[#131B2B]">
+      <div className="mb-4 sm:mb-5 inline-flex p-1 rounded-full border border-white/10 bg-[#131B2B] max-w-full overflow-x-auto">
         <Tab v="systems" t="Systems Agent" active={tab} setActive={setTab} />
         <Tab v="sop"     t="SOP Generator" active={tab} setActive={setTab} />
       </div>

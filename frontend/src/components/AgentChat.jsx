@@ -70,7 +70,7 @@ export default function AgentChat({
   };
 
   return (
-    <div className="card p-0 overflow-hidden flex flex-col h-[70vh] min-h-[480px] sm:h-[640px] sm:min-h-[640px]" data-testid={`chat-${agentKey}`}>
+    <div className="card p-0 overflow-hidden flex flex-col h-[min(70vh,600px)] min-h-[420px] sm:h-[640px] sm:min-h-[640px]" data-testid={`chat-${agentKey}`}>
       <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-white/5 flex items-center gap-2 sm:gap-3">
         <Sparkle weight="fill" style={{ color: accent }} />
         <div className="min-w-0">

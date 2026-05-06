@@ -26,6 +26,8 @@
 
 html, body, #root {
   height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   background: var(--bg);
   color: var(--text);
@@ -38,6 +40,11 @@ html, body, #root {
   overflow-x: hidden;
 }
 
+/* iOS smooth momentum scrolling for any scroll container */
+.overflow-y-auto, .overflow-auto, .overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* iOS: don't auto-zoom inputs (font >= 16px) */
 @media (max-width: 640px) {
   input, textarea, select { font-size: 16px !important; }
@@ -47,6 +54,11 @@ html, body, #root {
 @media (max-width: 640px) {
   button, a[role="button"], [data-testid*="-btn"] { min-height: 36px; }
 }
+
+/* Prevent any wide image/code from breaking mobile layout */
+img, svg, video, canvas { max-width: 100%; height: auto; }
+pre, code { word-break: break-word; overflow-wrap: anywhere; }
+.markdown table { display: block; overflow-x: auto; max-width: 100%; }
 
 ::selection { background: var(--gold); color: var(--bg); }
 

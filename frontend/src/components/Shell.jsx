@@ -9,46 +9,33 @@ import Logo from "@/components/Logo";
 
 const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault };
 
-export default function Shell({ profile, setProfile, sessionId }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const location = useLocation();
-
-  // close drawer on route change
-  useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
-  // lock body scroll when drawer open
-  useEffect(() => {
-    document.body.style.overflow = drawerOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [drawerOpen]);
-
-  const reset = () => {
-    if (!window.confirm("This clears your local profile and starts onboarding again. Continue?")) return;
-    localStorage.removeItem(SESSION_KEY);
-    setProfile(null);
-    window.location.reload();
-  };
-
-  const SidebarBody = (
+function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profile, onReset }) {
+  const isDesktop = variant === "desktop";
+  const compactDesktop = isDesktop && collapsed;
+  return (
     <>
       <div className="px-5 py-5 flex items-center gap-2 border-b border-white/5">
-        {collapsed ? <Logo size={22} withWord={false} /> : <Logo size={22} />}
-        <button
-          data-testid="sidebar-toggle"
-          onClick={() => setCollapsed(!collapsed)}
-          className="ml-auto text-slate-500 hover:text-white hidden lg:block"
-          aria-label="Toggle sidebar"
-        >
-          <ArrowsClockwise size={16} />
-        </button>
-        <button
-          data-testid="drawer-close"
-          onClick={() => setDrawerOpen(false)}
-          className="ml-auto text-slate-400 hover:text-white lg:hidden"
-          aria-label="Close menu"
-        >
-          <X size={18} />
-        </button>
+        {compactDesktop ? <Logo size={22} withWord={false} /> : <Logo size={22} />}
+        {isDesktop && (
+          <button
+            data-testid="sidebar-toggle"
+            onClick={() => setCollapsed(!collapsed)}
+            className="ml-auto text-slate-500 hover:text-white"
+            aria-label="Toggle sidebar"
+          >
+            <ArrowsClockwise size={16} />
+          </button>
+        )}
+        {!isDesktop && (
+          <button
+            data-testid="drawer-close"
+            onClick={() => setDrawerOpen(false)}
+            className="ml-auto text-slate-400 hover:text-white"
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -58,7 +45,7 @@ export default function Shell({ profile, setProfile, sessionId }) {
             <NavLink
               key={r.key}
               to={`/${r.key}`}
-              data-testid={`nav-${r.key}`}
+              data-testid={`nav-${r.key}-${variant}`}
               className={({ isActive }) =>
                 `group flex items-center gap-3 px-3 py-2.5 rounded-lg transition relative ${
                   isActive ? "bg-white/5 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
@@ -68,10 +55,17 @@ export default function Shell({ profile, setProfile, sessionId }) {
               {({ isActive }) => (
                 <>
                   {isActive && (
-                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r" style={{ background: r.color }} />
+                    <span
+                      className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r"
+                      style={{ background: r.color }}
+                    />
                   )}
-                  <Icon size={20} weight={collapsed ? "regular" : "duotone"} style={{ color: r.color }} />
-                  {!collapsed && (
+                  <Icon
+                    size={20}
+                    weight={compactDesktop ? "regular" : "duotone"}
+                    style={{ color: r.color }}
+                  />
+                  {!compactDesktop && (
                     <div className="leading-tight min-w-0">
                       <div className="text-sm font-medium truncate">{r.name}</div>
                       <div className="text-[11px] text-slate-500 truncate">{r.sub}</div>
@@ -84,22 +78,30 @@ export default function Shell({ profile, setProfile, sessionId }) {
         })}
       </nav>
 
-      <div className="p-3 border-t border-white/5" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}>
-        {!collapsed && (
+      <div
+        className="p-3 border-t border-white/5"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        {!compactDesktop && (
           <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">Founder</div>
         )}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#38BDF8] grid place-items-center text-[#0A0F1A] font-bold shrink-0">
             {profile?.business_name?.[0]?.toUpperCase() || "F"}
           </div>
-          {!collapsed && (
+          {!compactDesktop && (
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate">{profile?.business_name}</div>
               <div className="text-[11px] text-slate-500 truncate">{profile?.industry}</div>
             </div>
           )}
-          {!collapsed && (
-            <button data-testid="reset-profile-btn" onClick={reset} title="Reset profile" className="text-slate-500 hover:text-[#EF4444]">
+          {!compactDesktop && (
+            <button
+              data-testid={`reset-profile-${variant}-btn`}
+              onClick={onReset}
+              title="Reset profile"
+              className="text-slate-500 hover:text-[#EF4444]"
+            >
               <SignOut size={16} />
             </button>
           )}
@@ -107,6 +109,27 @@ export default function Shell({ profile, setProfile, sessionId }) {
       </div>
     </>
   );
+}
+
+export default function Shell({ profile, setProfile, sessionId }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [drawerOpen]);
+
+  const reset = () => {
+    if (!window.confirm("This clears your local profile and starts onboarding again. Continue?")) return;
+    localStorage.removeItem(SESSION_KEY);
+    setProfile(null);
+    window.location.reload();
+  };
+
+  const sidebarProps = { collapsed, setCollapsed, setDrawerOpen, profile, onReset: reset };
 
   return (
     <div className="min-h-screen lg:flex bg-[#0A0F1A] text-white">
@@ -115,10 +138,10 @@ export default function Shell({ profile, setProfile, sessionId }) {
         data-testid="sidebar"
         className={`hidden lg:flex shrink-0 border-r border-white/5 flex-col transition-all duration-300 ${collapsed ? "w-[72px]" : "w-[260px]"}`}
       >
-        {SidebarBody("desktop")}
+        <SidebarContent variant="desktop" {...sidebarProps} />
       </aside>
 
-      {/* Mobile drawer + scrim */}
+      {/* Mobile scrim + drawer */}
       {drawerOpen && (
         <div
           data-testid="drawer-scrim"
@@ -131,7 +154,7 @@ export default function Shell({ profile, setProfile, sessionId }) {
         className={`lg:hidden fixed top-0 left-0 bottom-0 w-[80%] max-w-[300px] z-50 bg-[#0A0F1A] border-r border-white/10 flex flex-col transition-transform duration-300 ${drawerOpen ? "translate-x-0" : "-translate-x-full"}`}
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        {SidebarBody("mobile")}
+        <SidebarContent variant="mobile" {...sidebarProps} />
       </aside>
 
       {/* Main */}
@@ -153,8 +176,12 @@ export default function Shell({ profile, setProfile, sessionId }) {
               <Logo size={20} withWord={false} />
             </Link>
             <div className="min-w-0">
-              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-500">Welcome back, founder</div>
-              <div className="font-display text-base sm:text-xl truncate max-w-[55vw] sm:max-w-none">{profile?.business_name}</div>
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.25em] text-slate-500">
+                Welcome back, founder
+              </div>
+              <div className="font-display text-base sm:text-xl truncate max-w-[55vw] sm:max-w-none">
+                {profile?.business_name}
+              </div>
             </div>
             <div className="ml-auto hidden md:flex items-center gap-3 text-xs text-slate-500">
               <span className="font-mono truncate max-w-[160px]">{profile?.industry}</span>
@@ -172,7 +199,9 @@ export default function Shell({ profile, setProfile, sessionId }) {
             <span>© {new Date().getFullYear()} Foundry</span>
             <Link to="/privacy" data-testid="footer-privacy-link" className="hover:text-white">Privacy</Link>
             <Link to="/terms" data-testid="footer-terms-link" className="hover:text-white">Terms</Link>
-            <span className="w-full sm:w-auto sm:ml-auto sm:text-right">AI may make mistakes. Verify with a licensed professional.</span>
+            <span className="w-full sm:w-auto sm:ml-auto sm:text-right">
+              AI may make mistakes. Verify with a licensed professional.
+            </span>
           </div>
           <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />
         </div>

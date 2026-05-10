@@ -4,6 +4,8 @@ import { Compass, ArrowsClockwise, Lightning, ArrowRight, FloppyDisk } from "@ph
 import RoomHeader, { InfoCard } from "@/components/RoomHeader";
 import { api } from "@/lib/api";
 
+import log from "@/lib/log";
+
 const ROOM_BY_KEY = {
   briefing: { name: "Briefing Room", color: "#38BDF8" },
   legal: { name: "Legal Desk", color: "#D4AF37" },
@@ -32,7 +34,7 @@ export default function Journey({ profile, sessionId }) {
       setPlan(r.data.plan);
       setModel(r.data.model || "");
     } catch (e) {
-      console.error("Journey generation failed:", e);
+      log.error("Journey generation failed:", e);
       setErr(e?.response?.data?.detail || "AI is busy. Try again in a moment.");
     } finally {
       setLoading(false);

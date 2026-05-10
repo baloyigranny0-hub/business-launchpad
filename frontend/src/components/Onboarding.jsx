@@ -76,6 +76,7 @@ export default function Onboarding({ sessionId, onDone }) {
     biggest_blocker: "",
   });
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const update = (k, v) => setForm({ ...form, [k]: v });
 
   const next = () => setStep((s) => s + 1);
@@ -83,10 +84,22 @@ export default function Onboarding({ sessionId, onDone }) {
 
   const submit = async () => {
     setSaving(true);
+    setSubmitError("");
     try {
       const r = await api.post("/profiles", { session_id: sessionId, ...form });
+      if (!r.data || !r.data.id) {
+        throw new Error("Empty profile response from server.");
+      }
       onDone(r.data);
-    } finally { setSaving(false); }
+    } catch (err) {
+      console.error("Onboarding submit failed:", err);
+      const detail = err?.response?.data?.detail;
+      const msg = (typeof detail === "string" && detail) || err?.message ||
+        "Couldn't save your profile. Check your connection and try again.";
+      setSubmitError(typeof msg === "string" ? msg : JSON.stringify(msg));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const canNext = () => {
@@ -276,12 +289,23 @@ export default function Onboarding({ sessionId, onDone }) {
                 data-testid="onboarding-submit-btn"
                 onClick={submit}
                 disabled={saving}
-                className="flex items-center gap-2 bg-[#D4AF37] text-[#0A0F1A] font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-sm sm:text-base hover:brightness-110 transition glow-gold"
+                className="flex items-center gap-2 bg-[#D4AF37] text-[#0A0F1A] font-semibold px-5 sm:px-6 py-2.5 sm:py-3 rounded-full text-sm sm:text-base hover:brightness-110 transition glow-gold disabled:opacity-50"
               >
                 {saving ? "Opening doors…" : (<>Enter Foundry <Lightning weight="fill" size={18} /></>)}
               </button>
             )}
           </div>
+          {submitError && (
+            <div
+              data-testid="onboarding-error"
+              className="mt-4 p-3 sm:p-4 rounded-xl border border-[#EF4444]/40 bg-[#EF4444]/10 text-[#FCA5A5] text-sm"
+            >
+              ⚠️ {submitError}
+              <div className="mt-1 text-[11px] text-slate-400">
+                If this keeps happening, refresh the page and try again. Your inputs above are preserved.
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
@@ -326,3 +350,4 @@ function Row({ k, v }) {
     </div>
   );
 }
+

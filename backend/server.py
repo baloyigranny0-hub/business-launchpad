@@ -4,6 +4,8 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import time
+from collections import defaultdict, deque
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -306,6 +308,7 @@ JOURNEY_SYSTEM = (
 
 @api_router.post("/journey")
 async def generate_journey(req: JourneyRequest):
+    enforce_rate_limit(req.session_id)
     import json as _json
     profile_ctx = build_profile_context(req.profile)
     user_prompt = (
@@ -357,6 +360,7 @@ async def generate_journey(req: JourneyRequest):
 # ----- Chat / generate -----
 @api_router.post("/agents/chat", response_model=AgentChatResponse)
 async def agent_chat(req: AgentChatRequest):
+    enforce_rate_limit(req.session_id)
     agent = get_agent(req.agent)
     sys_msg = agent["system"]
     profile_ctx = build_profile_context(req.profile)
@@ -382,6 +386,7 @@ async def agent_chat(req: AgentChatRequest):
 
 @api_router.post("/agents/generate", response_model=AgentChatResponse)
 async def agent_generate(req: GenerateRequest):
+    enforce_rate_limit(req.session_id)
     agent = get_agent(req.agent)
     sys_msg = agent["system"]
     profile_ctx = build_profile_context(req.profile)
@@ -482,3 +487,30 @@ app.add_middleware(
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+
+# ------------------------- Per-session AI rate limiter -------------------------
+# Sliding-window: max RATE_LIMIT_MAX AI calls per RATE_LIMIT_WINDOW seconds per session.
+RATE_LIMIT_MAX = int(os.environ.get("AI_RATE_LIMIT_MAX", "30"))
+RATE_LIMIT_WINDOW = int(os.environ.get("AI_RATE_LIMIT_WINDOW", "300"))  # seconds
+_rate_history: Dict[str, deque] = defaultdict(deque)
+
+
+def enforce_rate_limit(session_id: str):
+    """Raise 429 if the session has exceeded the AI call budget."""
+    now = time.monotonic()
+    q = _rate_history[session_id]
+    cutoff = now - RATE_LIMIT_WINDOW
+    while q and q[0] < cutoff:
+        q.popleft()
+    if len(q) >= RATE_LIMIT_MAX:
+        retry_in = int(q[0] + RATE_LIMIT_WINDOW - now)
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Easy there, founder. You've used {RATE_LIMIT_MAX} AI calls in the last "
+                f"{RATE_LIMIT_WINDOW // 60} minutes. Take a 60-second breather, then try again "
+                f"(or wait {max(retry_in, 1)}s)."
+            ),
+        )
+    q.append(now)

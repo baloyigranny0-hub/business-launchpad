@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { PaperPlaneRight, FloppyDisk, Sparkle, CircleNotch, Lightning } from "@phosphor-icons/react";
+import { PaperPlaneRight, FloppyDisk, Sparkle, CircleNotch, Lightning, SpeakerHigh, SpeakerSlash } from "@phosphor-icons/react";
 import { api } from "@/lib/api";
 import Markdown from "@/components/Markdown";
 import MicButton from "@/components/MicButton";
+import useSpeak from "@/lib/useSpeak";
 
 export default function AgentChat({
   agentKey,
@@ -156,6 +157,7 @@ export default function AgentChat({
 }
 
 function Bubble({ role, content, accent }) {
+  const { supported, speak, stop, speaking } = useSpeak();
   if (role === "user") {
     return (
       <div className="flex justify-end">
@@ -165,13 +167,33 @@ function Bubble({ role, content, accent }) {
       </div>
     );
   }
+  // Strip markdown for cleaner TTS reading
+  const plain = String(content)
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/[#*_`>]/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\|/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 group">
       <div className="w-7 h-7 rounded-full grid place-items-center shrink-0 mt-1" style={{ background: accent + "22", border: `1px solid ${accent}55` }}>
         <Sparkle size={14} weight="fill" style={{ color: accent }} />
       </div>
-      <div className="max-w-[88%] text-sm text-slate-200">
+      <div className="max-w-[88%] text-sm text-slate-200 min-w-0">
         <Markdown>{content}</Markdown>
+        {supported && (
+          <button
+            data-testid="bubble-speak-btn"
+            onClick={() => (speaking ? stop() : speak(plain))}
+            className="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-white transition"
+            title={speaking ? "Stop reading" : "Read aloud"}
+          >
+            {speaking
+              ? <><SpeakerSlash size={13} /> Stop</>
+              : <><SpeakerHigh size={13} /> Read aloud</>}
+          </button>
+        )}
       </div>
     </div>
   );

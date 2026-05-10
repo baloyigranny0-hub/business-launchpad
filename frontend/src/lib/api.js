@@ -5,6 +5,9 @@ export const API = `${BASE}/api`;
 
 export const api = axios.create({ baseURL: API, timeout: 120000 });
 
+// NOTE: session_id is a non-sensitive random UUID used to scope a user's
+// local data across visits. It is NOT an auth token. Storing in localStorage
+// is intentional and safe.
 export const SESSION_KEY = "vula_session_id";
 
 export function getSessionId() {

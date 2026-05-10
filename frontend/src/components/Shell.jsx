@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Outlet, NavLink, useLocation, Link } from "react-router-dom";
+import { Outlet, NavLink, useLocation, Link, useNavigate } from "react-router-dom";
 import {
   Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold,
-  SignOut, ArrowsClockwise, List, X,
+  ArrowsClockwise, List, X, CaretRight,
 } from "@phosphor-icons/react";
-import { ROOMS, SESSION_KEY } from "@/lib/api";
+import { ROOMS } from "@/lib/api";
 import Logo from "@/components/Logo";
 
 const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold };
 
-function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profile, onReset }) {
+function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profile, onSettings }) {
   const isDesktop = variant === "desktop";
   const compactDesktop = isDesktop && collapsed;
   return (
@@ -85,7 +85,12 @@ function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profi
         {!compactDesktop && (
           <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">Founder</div>
         )}
-        <div className="flex items-center gap-2">
+        <button
+          data-testid={`founder-card-${variant}`}
+          onClick={onSettings}
+          className="w-full flex items-center gap-2 text-left rounded-lg p-1.5 -m-1.5 hover:bg-white/5 transition"
+          title="Open settings"
+        >
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#38BDF8] grid place-items-center text-[#0A0F1A] font-bold shrink-0">
             {profile?.business_name?.[0]?.toUpperCase() || "F"}
           </div>
@@ -95,17 +100,8 @@ function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profi
               <div className="text-[11px] text-slate-500 truncate">{profile?.industry}</div>
             </div>
           )}
-          {!compactDesktop && (
-            <button
-              data-testid={`reset-profile-${variant}-btn`}
-              onClick={onReset}
-              title="Reset profile"
-              className="text-slate-500 hover:text-[#EF4444]"
-            >
-              <SignOut size={16} />
-            </button>
-          )}
-        </div>
+          {!compactDesktop && <CaretRight size={14} className="text-slate-500" />}
+        </button>
       </div>
     </>
   );
@@ -115,6 +111,7 @@ export default function Shell({ profile, setProfile, sessionId }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
   useEffect(() => {
@@ -122,14 +119,12 @@ export default function Shell({ profile, setProfile, sessionId }) {
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  const reset = () => {
-    if (!window.confirm("This clears your local profile and starts onboarding again. Continue?")) return;
-    localStorage.removeItem(SESSION_KEY);
-    setProfile(null);
-    window.location.reload();
+  const goSettings = () => {
+    setDrawerOpen(false);
+    navigate("/settings");
   };
 
-  const sidebarProps = { collapsed, setCollapsed, setDrawerOpen, profile, onReset: reset };
+  const sidebarProps = { collapsed, setCollapsed, setDrawerOpen, profile, onSettings: goSettings };
 
   return (
     <div className="min-h-screen lg:flex bg-[#0A0F1A] text-white" style={{ minHeight: "100dvh" }}>

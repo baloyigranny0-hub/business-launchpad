@@ -3,6 +3,7 @@ import { Vault as VaultIcon, Trash, DownloadSimple, Eye } from "@phosphor-icons/
 import RoomHeader from "@/components/RoomHeader";
 import Markdown from "@/components/Markdown";
 import { api } from "@/lib/api";
+import log from "@/lib/log";
 
 export default function Vault({ profile, sessionId }) {
   const [docs, setDocs] = useState([]);
@@ -10,7 +11,7 @@ export default function Vault({ profile, sessionId }) {
 
   const load = useCallback(
     () => api.get(`/vault/${sessionId}`).then(r => setDocs(r.data || []))
-      .catch((e) => console.error("Vault load failed:", e)),
+      .catch((e) => log.error("Vault load failed:", e)),
     [sessionId]
   );
   useEffect(() => { load(); }, [load]);

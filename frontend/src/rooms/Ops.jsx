@@ -3,6 +3,7 @@ import { GearSix, Plus, Check, Trash } from "@phosphor-icons/react";
 import AgentChat from "@/components/AgentChat";
 import RoomHeader, { RoomGrid, ChatCol, SideCol, InfoCard } from "@/components/RoomHeader";
 import { api } from "@/lib/api";
+import log from "@/lib/log";
 
 export default function Ops({ profile, sessionId }) {
   const [tab, setTab] = useState("systems"); // systems | sop
@@ -11,7 +12,7 @@ export default function Ops({ profile, sessionId }) {
 
   const load = useCallback(
     () => api.get(`/tasks/${sessionId}`).then(r => setTasks(r.data || []))
-      .catch((e) => console.error("Tasks load failed:", e)),
+      .catch((e) => log.error("Tasks load failed:", e)),
     [sessionId]
   );
   useEffect(() => { load(); }, [load]);

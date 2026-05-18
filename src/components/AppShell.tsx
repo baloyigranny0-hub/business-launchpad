@@ -47,11 +47,21 @@ export const AppShell = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto p-4">
+        <div className="mt-auto p-4 space-y-3">
           <div className="rounded-xl bg-gradient-card border border-border p-4">
             <div className="text-xs text-muted-foreground">Business</div>
             <div className="font-medium truncate">{state.business.name || "Untitled"}</div>
+            {user && <div className="text-xs text-muted-foreground mt-2 truncate">{user.email}</div>}
           </div>
+          {user ? (
+            <Button variant="outline" size="sm" className="w-full" onClick={async () => { await signOut(); navigate("/"); }}>
+              <LogOut className="size-4 mr-2" /> Sign out
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/auth")}>
+              <LogIn className="size-4 mr-2" /> Sign in to sync
+            </Button>
+          )}
         </div>
       </aside>
       <main className="flex-1 min-w-0">

@@ -14,7 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      workspaces: {
+        Row: {
+          business: Json
+          completed: Json
+          created_at: string
+          notes: Json
+          onboarded: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business?: Json
+          completed?: Json
+          created_at?: string
+          notes?: Json
+          onboarded?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business?: Json
+          completed?: Json
+          created_at?: string
+          notes?: Json
+          onboarded?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

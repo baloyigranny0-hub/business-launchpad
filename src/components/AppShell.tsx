@@ -1,7 +1,9 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
-import { LayoutDashboard, Map, FileText, Cog, TrendingUp, Settings, Compass } from "lucide-react";
+import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
+import { LayoutDashboard, Map, FileText, Cog, TrendingUp, Settings, Compass, LogIn, LogOut } from "lucide-react";
 import { APP_NAME } from "@/lib/roadmap";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 
 const nav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },

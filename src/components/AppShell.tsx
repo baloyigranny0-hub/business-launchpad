@@ -17,7 +17,8 @@ const nav = [
 export const AppShell = () => {
   const { state } = useStore();
   const { user, signOut } = useAuth();
-  const nav = useNavigate();
+  const navigate = useNavigate();
+  return (
     <div className="min-h-screen flex">
       <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-surface/60 backdrop-blur-xl">
         <Link to="/app" className="px-6 py-6 flex items-center gap-2">

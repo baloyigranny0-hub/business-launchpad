@@ -53,9 +53,9 @@ async function pushCloud(state: AppState) {
   if (!cloudUserId) return;
   await supabase.from("workspaces").upsert({
     user_id: cloudUserId,
-    business: state.business,
-    completed: state.completed,
-    notes: state.notes,
+    business: state.business as any,
+    completed: state.completed as any,
+    notes: state.notes as any,
     onboarded: state.onboarded,
   });
 }

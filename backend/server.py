@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, Header, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,40 +12,270 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 import httpx
+import json
+import asyncio
+from copy import deepcopy
 
 from agents import AGENTS, get_agent
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+load_dotenv(ROOT_DIR / ".env", override=True)
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+class _DeleteResult:
+    def __init__(self, deleted_count: int):
+        self.deleted_count = deleted_count
 
-OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
-OPENROUTER_FALLBACKS = [
-    OPENROUTER_MODEL,                              # primary (user-chosen Gemma 4)
-    "google/gemma-4-26b-a4b-it:free",
-    "openai/gpt-oss-120b:free",
+
+class _MemoryCursor:
+    def __init__(self, docs):
+        self.docs = [deepcopy(d) for d in docs]
+
+    def sort(self, key, direction):
+        reverse = direction < 0
+        self.docs.sort(key=lambda d: d.get(key, ""), reverse=reverse)
+        return self
+
+    async def to_list(self, limit):
+        return self.docs[:limit]
+
+
+class _MemoryCollection:
+    def __init__(self):
+        self.docs = []
+
+    def _matches(self, doc, query):
+        return all(doc.get(k) == v for k, v in query.items())
+
+    def _project(self, doc, projection):
+        data = deepcopy(doc)
+        if projection and projection.get("_id") == 0:
+            data.pop("_id", None)
+        return data
+
+    async def update_one(self, query, update, upsert=False):
+        for doc in self.docs:
+            if self._matches(doc, query):
+                doc.update(deepcopy(update.get("$set", {})))
+                return
+        if upsert:
+            self.docs.append(deepcopy(update.get("$set", {})))
+
+    async def find_one(self, query, projection=None):
+        for doc in self.docs:
+            if self._matches(doc, query):
+                return self._project(doc, projection)
+        return None
+
+    async def insert_one(self, doc):
+        self.docs.append(deepcopy(doc))
+
+    def find(self, query, projection=None):
+        return _MemoryCursor(
+            self._project(doc, projection)
+            for doc in self.docs
+            if self._matches(doc, query)
+        )
+
+    async def delete_one(self, query):
+        for index, doc in enumerate(self.docs):
+            if self._matches(doc, query):
+                del self.docs[index]
+                return _DeleteResult(1)
+        return _DeleteResult(0)
+
+    async def find_one_and_update(self, query, update, return_document=True, projection=None):
+        for doc in self.docs:
+            if self._matches(doc, query):
+                doc.update(deepcopy(update.get("$set", {})))
+                return self._project(doc, projection)
+        return None
+
+
+class _MemoryDB:
+    def __init__(self):
+        self._collections = {}
+
+    def __getattr__(self, name):
+        if name not in self._collections:
+            self._collections[name] = _MemoryCollection()
+        return self._collections[name]
+
+    async def command(self, command_name):
+        if command_name == "ping":
+            return {"ok": 1}
+        return {"ok": 1}
+
+
+USE_MEMORY_DB = os.environ.get("USE_MEMORY_DB", "false").lower() in {"1", "true", "yes"}
+USE_FIRESTORE_DB = os.environ.get("USE_FIRESTORE_DB", "false").lower() in {"1", "true", "yes"}
+mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+
+
+class _FirestoreCursor:
+    def __init__(self, docs):
+        self.docs = docs
+
+    def sort(self, key, direction):
+        reverse = direction < 0
+        self.docs.sort(key=lambda d: d.get(key, ""), reverse=reverse)
+        return self
+
+    async def to_list(self, limit):
+        return self.docs[:limit]
+
+
+class _FirestoreCollection:
+    def __init__(self, client, name):
+        self.collection = client.collection(name)
+
+    def _matches(self, doc, query):
+        return all(doc.get(k) == v for k, v in query.items())
+
+    def _project(self, doc, projection):
+        data = deepcopy(doc)
+        if projection and projection.get("_id") == 0:
+            data.pop("_id", None)
+        return data
+
+    async def _find_docs(self, query):
+        def work():
+            stream = self.collection.stream()
+            return [snap.to_dict() or {} for snap in stream]
+
+        docs = await asyncio.to_thread(work)
+        return [doc for doc in docs if self._matches(doc, query)]
+
+    async def update_one(self, query, update, upsert=False):
+        docs = await self._find_docs(query)
+        data = deepcopy(update.get("$set", {}))
+        if docs:
+            doc_id = docs[0].get("id") or str(uuid.uuid4())
+            data.setdefault("id", doc_id)
+            await asyncio.to_thread(self.collection.document(doc_id).set, data, merge=True)
+            return
+        if upsert:
+            doc_id = data.get("id") or str(uuid.uuid4())
+            data.setdefault("id", doc_id)
+            await asyncio.to_thread(self.collection.document(doc_id).set, data)
+
+    async def find_one(self, query, projection=None):
+        docs = await self._find_docs(query)
+        if not docs:
+            return None
+        return self._project(docs[0], projection)
+
+    async def insert_one(self, doc):
+        data = deepcopy(doc)
+        doc_id = data.get("id") or str(uuid.uuid4())
+        data.setdefault("id", doc_id)
+        await asyncio.to_thread(self.collection.document(doc_id).set, data)
+
+    def find(self, query, projection=None):
+        async def load():
+            docs = await self._find_docs(query)
+            return [self._project(doc, projection) for doc in docs]
+
+        class _LazyFirestoreCursor:
+            def __init__(self, loader):
+                self.loader = loader
+                self.sort_key = None
+                self.sort_direction = 1
+
+            def sort(self, key, direction):
+                self.sort_key = key
+                self.sort_direction = direction
+                return self
+
+            async def to_list(self, limit):
+                docs = await self.loader()
+                if self.sort_key:
+                    docs.sort(key=lambda d: d.get(self.sort_key, ""), reverse=self.sort_direction < 0)
+                return docs[:limit]
+
+        return _LazyFirestoreCursor(load)
+
+    async def delete_one(self, query):
+        docs = await self._find_docs(query)
+        if not docs:
+            return _DeleteResult(0)
+        doc_id = docs[0].get("id")
+        if not doc_id:
+            return _DeleteResult(0)
+        await asyncio.to_thread(self.collection.document(doc_id).delete)
+        return _DeleteResult(1)
+
+    async def find_one_and_update(self, query, update, return_document=True, projection=None):
+        docs = await self._find_docs(query)
+        if not docs:
+            return None
+        doc = docs[0]
+        doc.update(deepcopy(update.get("$set", {})))
+        doc_id = doc.get("id") or str(uuid.uuid4())
+        doc.setdefault("id", doc_id)
+        await asyncio.to_thread(self.collection.document(doc_id).set, doc, merge=True)
+        return self._project(doc, projection)
+
+
+class _FirestoreDB:
+    def __init__(self):
+        from google.cloud import firestore
+
+        self.client = firestore.Client(project=os.environ.get("GOOGLE_CLOUD_PROJECT"))
+        self._collections = {}
+
+    def __getattr__(self, name):
+        if name not in self._collections:
+            self._collections[name] = _FirestoreCollection(self.client, name)
+        return self._collections[name]
+
+    async def command(self, command_name):
+        if command_name == "ping":
+            await asyncio.to_thread(lambda: list(self.client.collections(page_size=1)))
+        return {"ok": 1}
+
+
+if USE_MEMORY_DB:
+    client = None
+    db = _MemoryDB()
+elif USE_FIRESTORE_DB:
+    client = None
+    db = _FirestoreDB()
+else:
+    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=3000)
+    db = client[os.environ["DB_NAME"]]
+
+def _csv_env(name: str) -> List[str]:
+    return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]
+
+
+OPENROUTER_API_KEYS = []
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
+if OPENROUTER_API_KEY:
+    OPENROUTER_API_KEYS.append(OPENROUTER_API_KEY)
+OPENROUTER_API_KEYS.extend(_csv_env("OPENROUTER_API_KEYS"))
+OPENROUTER_API_KEYS = list(dict.fromkeys(OPENROUTER_API_KEYS))
+if not OPENROUTER_API_KEYS:
+    raise RuntimeError("OPENROUTER_API_KEY or OPENROUTER_API_KEYS is required")
+
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-oss-120b:free")
+OPENROUTER_FALLBACKS = list(dict.fromkeys([
+    OPENROUTER_MODEL,                              # fast primary
     "openai/gpt-oss-20b:free",
     "z-ai/glm-4.5-air:free",
-    "minimax/minimax-m2.5:free",
-    "tencent/hy3-preview:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
     "nvidia/nemotron-3-nano-30b-a3b:free",
-    "nvidia/nemotron-nano-9b-v2:free",
-    "deepseek/deepseek-chat-v3.1:free",
-    "qwen/qwen3-coder:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
     "openrouter/auto",                             # last-ditch auto router
-]
+]))
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+AI_REQUEST_TIMEOUT = float(os.environ.get("AI_REQUEST_TIMEOUT", "25"))
+AI_MAX_ATTEMPTS = max(1, int(os.environ.get("AI_MAX_ATTEMPTS", "1")))
 
 # Optional Ollama provider (self-hosted or Ollama Cloud). Only used if OLLAMA_BASE_URL is set.
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "").rstrip("/")
 OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "")
 # Comma-separated list, e.g. "llama3.2:3b,nemotron3:33b,deepseek-v4-pro:cloud,gpt-oss:20b,qwen3:14b"
 OLLAMA_MODELS = [m.strip() for m in os.environ.get("OLLAMA_MODELS", "").split(",") if m.strip()]
+FIREBASE_AUTH_REQUIRED = os.environ.get("FIREBASE_AUTH_REQUIRED", "false").lower() in {"1", "true", "yes"}
 
 app = FastAPI(title="Foundry API")
 api_router = APIRouter(prefix="/api")
@@ -148,37 +378,128 @@ class TaskUpdate(BaseModel):
     done: bool
 
 
+class FirebaseCustomTokenRequest(BaseModel):
+    session_id: str
+
+
+class FirebaseCustomTokenResponse(BaseModel):
+    custom_token: str
+    uid: str
+
+
+# ------------------------- Firebase Auth -------------------------
+_firebase_initialized = False
+
+
+def _init_firebase_admin():
+    """Initialize Firebase Admin lazily without ever storing credentials in source."""
+    global _firebase_initialized
+    if _firebase_initialized:
+        return
+
+    try:
+        import firebase_admin
+        from firebase_admin import credentials
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Firebase Admin SDK is not installed on the backend.",
+        ) from exc
+
+    if firebase_admin._apps:
+        _firebase_initialized = True
+        return
+
+    service_account_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if service_account_json:
+        try:
+            service_account = json.loads(service_account_json)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON.",
+            ) from exc
+        firebase_admin.initialize_app(credentials.Certificate(service_account))
+    else:
+        # Uses GOOGLE_APPLICATION_CREDENTIALS or cloud default credentials.
+        firebase_admin.initialize_app()
+
+    _firebase_initialized = True
+
+
+def _bearer_token(authorization: Optional[str]) -> Optional[str]:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def enforce_firebase_session(session_id: str, authorization: Optional[str]):
+    """When enabled, require a Firebase ID token whose uid matches session_id."""
+    if not FIREBASE_AUTH_REQUIRED:
+        return
+
+    token = _bearer_token(authorization)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing Firebase bearer token")
+
+    _init_firebase_admin()
+    from firebase_admin import auth
+
+    try:
+        decoded = auth.verify_id_token(token)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid Firebase bearer token") from exc
+
+    if decoded.get("uid") != session_id:
+        raise HTTPException(status_code=403, detail="Token does not match session")
+
+
 # ------------------------- AI provider chain -------------------------
 async def _try_openrouter(ac: httpx.AsyncClient, messages, temperature: float):
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://foundry.app",
-        "X-Title": "Foundry",
-    }
     last_err = None
-    for model in OPENROUTER_FALLBACKS:
-        payload = {"model": model, "messages": messages, "temperature": temperature}
-        try:
-            r = await ac.post(OPENROUTER_URL, headers=headers, json=payload, timeout=45.0)
-        except Exception as e:
-            last_err = f"{model} network: {e}"
-            continue
-        if r.status_code == 200:
-            try:
-                data = r.json()
-                content = data["choices"][0]["message"]["content"]
-                if content and content.strip():
-                    return content, model
-                last_err = f"{model} empty"
-            except (KeyError, IndexError, ValueError):
-                last_err = f"malformed response from {model}"
-        elif r.status_code in (401, 403):
-            # Bad key / forbidden: don't burn the rest of the chain on the same key
-            return None, f"openrouter_auth:{r.status_code}"
-        else:
-            last_err = f"{model} -> {r.status_code}: {r.text[:120]}"
-            logger.warning(f"OpenRouter fallback: {last_err}")
+    auth_failures = 0
+    for attempt in range(AI_MAX_ATTEMPTS):
+        for key_index, api_key in enumerate(OPENROUTER_API_KEYS, start=1):
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://foundry.app",
+                "X-Title": "Foundry",
+            }
+            for model in OPENROUTER_FALLBACKS:
+                payload = {"model": model, "messages": messages, "temperature": temperature}
+                try:
+                    r = await ac.post(
+                        OPENROUTER_URL,
+                        headers=headers,
+                        json=payload,
+                        timeout=AI_REQUEST_TIMEOUT,
+                    )
+                except Exception as e:
+                    last_err = f"{model} network: {e}"
+                    continue
+                if r.status_code == 200:
+                    try:
+                        data = r.json()
+                        content = data["choices"][0]["message"]["content"]
+                        if content and content.strip():
+                            return content, model
+                        last_err = f"{model} empty"
+                    except (KeyError, IndexError, ValueError):
+                        last_err = f"malformed response from {model}"
+                elif r.status_code in (401, 403):
+                    auth_failures += 1
+                    last_err = f"openrouter_key_{key_index}_auth:{r.status_code}"
+                    logger.warning("OpenRouter key %s auth failed with %s", key_index, r.status_code)
+                    break
+                else:
+                    last_err = f"{model} -> {r.status_code}: {r.text[:120]}"
+                    logger.warning("OpenRouter fallback attempt %s: %s", attempt + 1, last_err)
+    if auth_failures == len(OPENROUTER_API_KEYS):
+        return None, "openrouter_auth_all_keys_failed"
     return None, last_err or "openrouter_all_failed"
 
 
@@ -254,6 +575,24 @@ async def root():
     return {"app": "Foundry", "model": OPENROUTER_MODEL, "status": "ok"}
 
 
+@api_router.get("/health")
+async def health():
+    try:
+        await db.command("ping")
+    except Exception as exc:
+        logger.exception("Database health check failed")
+        raise HTTPException(status_code=503, detail="Database is not reachable") from exc
+
+    return {
+        "status": "ok",
+        "service": "foundry-api",
+        "database": "memory" if USE_MEMORY_DB else ("firestore" if USE_FIRESTORE_DB else "mongodb"),
+        "auth_required": FIREBASE_AUTH_REQUIRED,
+        "openrouter_keys_configured": len(OPENROUTER_API_KEYS),
+        "ollama_enabled": bool(OLLAMA_BASE_URL and OLLAMA_MODELS),
+    }
+
+
 @api_router.get("/agents")
 async def list_agents():
     return [
@@ -262,9 +601,33 @@ async def list_agents():
     ]
 
 
+# ----- Firebase Auth -----
+@api_router.post("/auth/firebase/custom-token", response_model=FirebaseCustomTokenResponse)
+async def create_firebase_custom_token(payload: FirebaseCustomTokenRequest):
+    _init_firebase_admin()
+    from firebase_admin import auth
+
+    uid = payload.session_id.strip()
+    if not uid:
+        raise HTTPException(status_code=400, detail="session_id is required")
+    if len(uid) > 128:
+        raise HTTPException(status_code=400, detail="session_id is too long for a Firebase uid")
+
+    try:
+        token = auth.create_custom_token(uid, {"foundrySessionId": uid})
+    except Exception as exc:
+        logger.exception("Firebase custom token creation failed")
+        raise HTTPException(status_code=502, detail="Could not create Firebase custom token") from exc
+
+    if isinstance(token, bytes):
+        token = token.decode("utf-8")
+    return FirebaseCustomTokenResponse(custom_token=token, uid=uid)
+
+
 # ----- Profiles -----
 @api_router.post("/profiles", response_model=Profile)
-async def create_profile(payload: ProfileCreate):
+async def create_profile(payload: ProfileCreate, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(payload.session_id, authorization)
     p = Profile(**payload.model_dump())
     doc = p.model_dump()
     # upsert by session_id (one profile per session for v1)
@@ -275,7 +638,8 @@ async def create_profile(payload: ProfileCreate):
 
 
 @api_router.get("/profiles/{session_id}", response_model=Optional[Profile])
-async def get_profile(session_id: str):
+async def get_profile(session_id: str, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(session_id, authorization)
     doc = await db.profiles.find_one({"session_id": session_id}, {"_id": 0})
     if not doc:
         return None
@@ -294,11 +658,12 @@ JOURNEY_SYSTEM = (
     "{\"summary\": str, \"buckets\": ["
     "{\"label\": \"Today\"|\"This Week\"|\"This Month\"|\"Next Quarter\","
     " \"items\": [{\"title\": str, \"why\": str, \"room\": one of "
-    "(briefing|legal|design|marketing|ops|salesgym|vault), \"effort\": \"low\"|\"med\"|\"high\"}]}]}\n"
+    "(briefing|submission|legal|design|marketing|ops|salesgym|vault), \"effort\": \"low\"|\"med\"|\"high\"}]}]}\n"
     "Rules:\n"
     "- Tailor depth to knowledge_level (beginner=hand-holding, expert=concise).\n"
     "- If is_registered='no' or 'unsure', Today/This Week MUST include the registration step (legal room).\n"
     "- If is_registered='yes', skip basic registration; focus on POST-registration milestones.\n"
+    "- If the founder mentions grants, cleantech, incubators, prototypes, funding, or commercialisation, include the submission room.\n"
     "- 3 items per bucket max. 4 buckets total.\n"
     "- Never invent statute numbers or URLs. Use general principles.\n"
     "- 8-year-old logic. Short titles. One-sentence why.\n"
@@ -307,7 +672,8 @@ JOURNEY_SYSTEM = (
 
 
 @api_router.post("/journey")
-async def generate_journey(req: JourneyRequest):
+async def generate_journey(req: JourneyRequest, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(req.session_id, authorization)
     enforce_rate_limit(req.session_id)
     import json as _json
     profile_ctx = build_profile_context(req.profile)
@@ -359,7 +725,8 @@ async def generate_journey(req: JourneyRequest):
 
 # ----- Chat / generate -----
 @api_router.post("/agents/chat", response_model=AgentChatResponse)
-async def agent_chat(req: AgentChatRequest):
+async def agent_chat(req: AgentChatRequest, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(req.session_id, authorization)
     enforce_rate_limit(req.session_id)
     agent = get_agent(req.agent)
     sys_msg = agent["system"]
@@ -368,7 +735,7 @@ async def agent_chat(req: AgentChatRequest):
         sys_msg = sys_msg + "\n\n" + profile_ctx
 
     msgs = [{"role": "system", "content": sys_msg}]
-    for m in req.messages[-12:]:  # cap context
+    for m in req.messages[-6:]:  # cap context for faster AI responses
         msgs.append({"role": m.role, "content": m.content})
 
     reply, used_model = await call_openrouter(msgs)
@@ -385,7 +752,8 @@ async def agent_chat(req: AgentChatRequest):
 
 
 @api_router.post("/agents/generate", response_model=AgentChatResponse)
-async def agent_generate(req: GenerateRequest):
+async def agent_generate(req: GenerateRequest, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(req.session_id, authorization)
     enforce_rate_limit(req.session_id)
     agent = get_agent(req.agent)
     sys_msg = agent["system"]
@@ -402,42 +770,48 @@ async def agent_generate(req: GenerateRequest):
 
 # ----- Vault -----
 @api_router.post("/vault", response_model=VaultDoc)
-async def save_doc(payload: VaultDocCreate):
+async def save_doc(payload: VaultDocCreate, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(payload.session_id, authorization)
     doc = VaultDoc(**payload.model_dump())
     await db.vault.insert_one(doc.model_dump())
     return doc
 
 
 @api_router.get("/vault/{session_id}", response_model=List[VaultDoc])
-async def list_docs(session_id: str):
+async def list_docs(session_id: str, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(session_id, authorization)
     cursor = db.vault.find({"session_id": session_id}, {"_id": 0}).sort("created_at", -1)
     return [VaultDoc(**d) for d in await cursor.to_list(200)]
 
 
 @api_router.delete("/vault/{doc_id}")
-async def delete_doc(doc_id: str):
-    res = await db.vault.delete_one({"id": doc_id})
+async def delete_doc(doc_id: str, session_id: str, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(session_id, authorization)
+    res = await db.vault.delete_one({"id": doc_id, "session_id": session_id})
     return {"deleted": res.deleted_count}
 
 
 # ----- Tasks -----
 @api_router.post("/tasks", response_model=Task)
-async def create_task(payload: TaskCreate):
+async def create_task(payload: TaskCreate, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(payload.session_id, authorization)
     t = Task(**payload.model_dump())
     await db.tasks.insert_one(t.model_dump())
     return t
 
 
 @api_router.get("/tasks/{session_id}", response_model=List[Task])
-async def list_tasks(session_id: str):
+async def list_tasks(session_id: str, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(session_id, authorization)
     cursor = db.tasks.find({"session_id": session_id}, {"_id": 0}).sort("created_at", -1)
     return [Task(**d) for d in await cursor.to_list(500)]
 
 
 @api_router.patch("/tasks/{task_id}", response_model=Task)
-async def update_task(task_id: str, payload: TaskUpdate):
+async def update_task(task_id: str, payload: TaskUpdate, session_id: str, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(session_id, authorization)
     res = await db.tasks.find_one_and_update(
-        {"id": task_id}, {"$set": {"done": payload.done}},
+        {"id": task_id, "session_id": session_id}, {"$set": {"done": payload.done}},
         return_document=True, projection={"_id": 0}
     )
     if not res:
@@ -446,8 +820,9 @@ async def update_task(task_id: str, payload: TaskUpdate):
 
 
 @api_router.delete("/tasks/{task_id}")
-async def delete_task(task_id: str):
-    res = await db.tasks.delete_one({"id": task_id})
+async def delete_task(task_id: str, session_id: str, authorization: Optional[str] = Header(None)):
+    enforce_firebase_session(session_id, authorization)
+    res = await db.tasks.delete_one({"id": task_id, "session_id": session_id})
     return {"deleted": res.deleted_count}
 
 
@@ -486,7 +861,8 @@ app.add_middleware(
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client:
+        client.close()
 
 
 # ------------------------- Per-session AI rate limiter -------------------------

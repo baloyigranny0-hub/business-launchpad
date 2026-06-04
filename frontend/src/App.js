@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { api, getSessionId, SESSION_KEY } from "@/lib/api";
+import { ensureFirebaseAuth } from "@/lib/firebaseAuth";
 import log from "@/lib/log";
 import Onboarding from "@/components/Onboarding";
 import Shell from "@/components/Shell";
 import Journey from "@/rooms/Journey";
 import Briefing from "@/rooms/Briefing";
+import Submission from "@/rooms/Submission";
 import Legal from "@/rooms/Legal";
 import Design from "@/rooms/Design";
 import Marketing from "@/rooms/Marketing";
@@ -40,7 +42,8 @@ export default function App() {
 
   useEffect(() => {
     const ac = new AbortController();
-    api.get(`/profiles/${sessionId}`, { signal: ac.signal })
+    ensureFirebaseAuth(sessionId)
+      .then(() => api.get(`/profiles/${sessionId}`, { signal: ac.signal }))
       .then((r) => { setProfile(r.data || null); setLoaded(true); })
       .catch((err) => {
         if (err?.name !== "CanceledError") log.error("Profile load failed:", err);
@@ -71,6 +74,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/journey" replace />} />
             <Route path="/journey"   element={<Journey   profile={profile} sessionId={sessionId} />} />
             <Route path="/briefing"  element={<Briefing  profile={profile} sessionId={sessionId} />} />
+            <Route path="/submission" element={<Submission profile={profile} sessionId={sessionId} />} />
             <Route path="/legal"     element={<Legal     profile={profile} sessionId={sessionId} />} />
             <Route path="/design"    element={<Design    profile={profile} sessionId={sessionId} />} />
             <Route path="/marketing" element={<Marketing profile={profile} sessionId={sessionId} />} />

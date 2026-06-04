@@ -1,13 +1,25 @@
 import axios from "axios";
+import { getFirebaseIdToken } from "@/lib/firebaseAuth";
 
-const BASE = process.env.REACT_APP_BACKEND_URL;
+const BASE =
+  process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8000";
 export const API = `${BASE}/api`;
 
 export const api = axios.create({ baseURL: API, timeout: 120000 });
 
-// NOTE: session_id is a non-sensitive random UUID used to scope a user's
-// local data across visits. It is NOT an auth token. Storing in localStorage
-// is intentional and safe.
+api.interceptors.request.use(async (config) => {
+  config.headers = config.headers || {};
+  config.headers["bypass-tunnel-reminder"] = "1";
+  const token = await getFirebaseIdToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// NOTE: session_id currently acts as the user's bearer credential. It is
+// generated client-side, stored locally, and should never be logged or shared
+// except through the explicit restore-link flow.
 export const SESSION_KEY = "vula_session_id";
 
 export function getSessionId() {
@@ -22,6 +34,7 @@ export function getSessionId() {
 export const ROOMS = [
   { key: "journey",   name: "Your Journey",      sub: "Personalized roadmap",   icon: "MapTrifold",    agent: null,         color: "#D4AF37" },
   { key: "briefing",  name: "Briefing Room",     sub: "Ideation & Strategy",   icon: "Compass",       agent: "research",   color: "#38BDF8" },
+  { key: "submission",name: "Submission Lab",     sub: "Canvas & Funding Pack", icon: "Path",          agent: null,         color: "#60A5FA" },
   { key: "legal",     name: "Legal Desk",        sub: "Compliance Roadmap",    icon: "Scales",        agent: "compliance", color: "#D4AF37" },
   { key: "design",    name: "Design Studio",     sub: "Brand & Profile",       icon: "PaintBrush",    agent: "brand",      color: "#F472B6" },
   { key: "marketing", name: "Marketing War Room",sub: "Growth Strategies",     icon: "Megaphone",     agent: "marketing",  color: "#34D399" },

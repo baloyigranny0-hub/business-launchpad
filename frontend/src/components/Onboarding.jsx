@@ -125,7 +125,7 @@ export default function Onboarding({ sessionId, onDone }) {
 
         <motion.div key={step} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           {step === 0 && (
-            <Block title="What are you building?" sub="Give your venture a working name. We can change it later in the Design Studio.">
+            <Block title="What kind of business venture are you setting up?" sub="Give your venture a working name. We can change it later in the Design Studio.">
               <input
                 data-testid="onboarding-business-name-input"
                 autoFocus
@@ -255,7 +255,7 @@ export default function Onboarding({ sessionId, onDone }) {
             </Block>
           )}
           {step === 4 && (
-            <Block title="Ready to walk in?" sub="The agents will tailor every room to this profile.">
+            <Block title="Ready to walk in?" sub="The agents will tailor every room, including Submission Lab, to this profile.">
               <div className="card p-5 sm:p-6 space-y-2 text-slate-300">
                 <Row k="Business" v={form.business_name} />
                 <Row k="Industry" v={form.industry} />
@@ -350,4 +350,3 @@ function Row({ k, v }) {
     </div>
   );
 }
-

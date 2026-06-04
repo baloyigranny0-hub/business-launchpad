@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Compass, ArrowsClockwise, Lightning, ArrowRight, FloppyDisk } from "@phosphor-icons/react";
 import RoomHeader, { InfoCard } from "@/components/RoomHeader";
@@ -8,6 +8,7 @@ import log from "@/lib/log";
 
 const ROOM_BY_KEY = {
   briefing: { name: "Briefing Room", color: "#38BDF8" },
+  submission: { name: "Submission Lab", color: "#60A5FA" },
   legal: { name: "Legal Desk", color: "#D4AF37" },
   design: { name: "Design Studio", color: "#F472B6" },
   marketing: { name: "Marketing War Room", color: "#34D399" },
@@ -24,19 +25,24 @@ export default function Journey({ profile, sessionId }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [savedFlash, setSavedFlash] = useState(false);
+  const loadingRef = useRef(false);
   const navigate = useNavigate();
 
   const generate = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setErr("");
     try {
       const r = await api.post("/journey", { session_id: sessionId, profile });
       setPlan(r.data.plan);
       setModel(r.data.model || "");
+      setErr("");
     } catch (e) {
       log.error("Journey generation failed:", e);
-      setErr(e?.response?.data?.detail || "AI is busy. Try again in a moment.");
+      setErr((current) => current || e?.response?.data?.detail || "AI is busy. Try again in a moment.");
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }, [sessionId, profile]);
@@ -97,7 +103,7 @@ export default function Journey({ profile, sessionId }) {
         )}
       </div>
 
-      {err && (
+      {err && !plan && (
         <div className="card p-5 mb-5 border-[#EF4444]/40">
           <div className="text-[#EF4444] text-sm">⚠️ {err}</div>
           <div className="text-slate-400 text-xs mt-2">The free models are throttled right now. Hit Regenerate.</div>

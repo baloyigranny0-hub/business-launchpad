@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Outlet, NavLink, useLocation, Link, useNavigate } from "react-router-dom";
 import {
   Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold,
-  ArrowsClockwise, List, X, CaretRight,
+  ArrowsClockwise, List, X, CaretRight, Path,
 } from "@phosphor-icons/react";
 import { ROOMS } from "@/lib/api";
 import Logo from "@/components/Logo";
 
-const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold };
+const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold, Path };
 
 function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profile, onSettings }) {
   const isDesktop = variant === "desktop";

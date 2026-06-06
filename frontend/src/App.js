@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { api, getSessionId, SESSION_KEY } from "@/lib/api";
-import { ensureFirebaseAuth } from "@/lib/firebaseAuth";
+import { ensureFirebaseAuth, isFirebaseAuthConfigured, watchFirebaseUser } from "@/lib/firebaseAuth";
 import log from "@/lib/log";
+import AuthGate from "@/components/AuthGate";
 import Onboarding from "@/components/Onboarding";
 import Shell from "@/components/Shell";
 import Journey from "@/rooms/Journey";
@@ -37,12 +38,30 @@ function adoptSessionFromUrl() {
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+  const [authReady, setAuthReady] = useState(!isFirebaseAuthConfigured());
   adoptSessionFromUrl();
-  const sessionId = getSessionId();
+  const authEnabled = isFirebaseAuthConfigured();
+  const sessionId = authEnabled && authUser?.uid ? authUser.uid : getSessionId();
 
   useEffect(() => {
+    if (!authEnabled) return undefined;
+    return watchFirebaseUser((user) => {
+      setAuthUser(user);
+      setProfile(null);
+      setLoaded(false);
+      setAuthReady(true);
+    });
+  }, [authEnabled]);
+
+  useEffect(() => {
+    if (authEnabled && !authUser) {
+      setLoaded(true);
+      return undefined;
+    }
+
     const ac = new AbortController();
-    ensureFirebaseAuth(sessionId)
+    (authEnabled ? Promise.resolve() : ensureFirebaseAuth(sessionId))
       .then(() => api.get(`/profiles/${sessionId}`, { signal: ac.signal }))
       .then((r) => { setProfile(r.data || null); setLoaded(true); })
       .catch((err) => {
@@ -50,11 +69,11 @@ export default function App() {
         setLoaded(true);
       });
     return () => ac.abort();
-  }, [sessionId]);
+  }, [authEnabled, authUser, sessionId]);
 
   const onLegal = PathIs("/privacy") || PathIs("/terms");
 
-  if (!loaded && !onLegal) {
+  if ((!authReady || !loaded) && !onLegal) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[#0A0F1A]">
         <div className="font-display text-2xl shimmer-text">Foundry</div>
@@ -67,7 +86,9 @@ export default function App() {
       <Routes>
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        {!profile ? (
+        {authEnabled && !authUser ? (
+          <Route path="*" element={<AuthGate />} />
+        ) : !profile ? (
           <Route path="*" element={<Onboarding sessionId={sessionId} onDone={(p) => setProfile(p)} />} />
         ) : (
           <Route element={<Shell profile={profile} setProfile={setProfile} sessionId={sessionId} />}>

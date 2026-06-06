@@ -5,11 +5,12 @@ import {
   ArrowsClockwise, List, X, CaretRight, Path,
 } from "@phosphor-icons/react";
 import { ROOMS } from "@/lib/api";
+import { isFirebaseAuthConfigured, signOutUser } from "@/lib/firebaseAuth";
 import Logo from "@/components/Logo";
 
 const ICONS = { Compass, Scales, PaintBrush, Megaphone, GearSix, Barbell, Vault, MapTrifold, Path };
 
-function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profile, onSettings }) {
+function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profile, onSettings, onSignOut }) {
   const isDesktop = variant === "desktop";
   const compactDesktop = isDesktop && collapsed;
   return (
@@ -102,6 +103,15 @@ function SidebarContent({ variant, collapsed, setCollapsed, setDrawerOpen, profi
           )}
           {!compactDesktop && <CaretRight size={14} className="text-slate-500" />}
         </button>
+        {isFirebaseAuthConfigured() && !compactDesktop && (
+          <button
+            data-testid={`signout-${variant}`}
+            onClick={onSignOut}
+            className="mt-3 w-full rounded-md border border-white/10 px-3 py-2 text-xs text-slate-400 hover:text-white hover:bg-white/5"
+          >
+            Sign out
+          </button>
+        )}
       </div>
     </>
   );
@@ -123,8 +133,14 @@ export default function Shell({ profile, setProfile, sessionId }) {
     setDrawerOpen(false);
     navigate("/settings");
   };
+  const onSignOut = async () => {
+    setDrawerOpen(false);
+    await signOutUser();
+    setProfile(null);
+    navigate("/");
+  };
 
-  const sidebarProps = { collapsed, setCollapsed, setDrawerOpen, profile, onSettings: goSettings };
+  const sidebarProps = { collapsed, setCollapsed, setDrawerOpen, profile, onSettings: goSettings, onSignOut };
 
   return (
     <div className="min-h-screen lg:flex bg-[#0A0F1A] text-white" style={{ minHeight: "100dvh" }}>

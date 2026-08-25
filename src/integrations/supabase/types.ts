@@ -14,13 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      coach_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           business: Json
           completed: Json
           created_at: string
+          intake: Json
+          lean_canvas: Json
           notes: Json
           onboarded: boolean
+          plan: Json
+          pws: Json
+          readiness: Json
           updated_at: string
           user_id: string
         }
@@ -28,8 +57,13 @@ export type Database = {
           business?: Json
           completed?: Json
           created_at?: string
+          intake?: Json
+          lean_canvas?: Json
           notes?: Json
           onboarded?: boolean
+          plan?: Json
+          pws?: Json
+          readiness?: Json
           updated_at?: string
           user_id: string
         }
@@ -37,8 +71,13 @@ export type Database = {
           business?: Json
           completed?: Json
           created_at?: string
+          intake?: Json
+          lean_canvas?: Json
           notes?: Json
           onboarded?: boolean
+          plan?: Json
+          pws?: Json
+          readiness?: Json
           updated_at?: string
           user_id?: string
         }

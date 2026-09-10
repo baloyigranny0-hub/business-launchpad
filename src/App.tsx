@@ -47,7 +47,7 @@ const App = () => (
                 <Route path="canvas" element={<Canvas />} />
                 <Route path="validation" element={<Validation />} />
                 <Route path="module/:id" element={<Module />} />
-                <Route path="settings" element={<Settings />} />on
+                <Route path="settings" element={<Settings />} />
               </Route>
               <Route path="/dashboard" element={<Navigate to="/app" replace />} />
               <Route path="*" element={<NotFound />} />

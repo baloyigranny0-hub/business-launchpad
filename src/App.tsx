@@ -6,7 +6,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Onboarding from "./pages/Onboarding";
+import Intake from "./pages/Intake";
+import Canvas from "./pages/Canvas";
+import Validation from "./pages/Validation";
 import Dashboard from "./pages/Dashboard";
 import Roadmap from "./pages/Roadmap";
 import Module from "./pages/Module";
@@ -38,12 +40,14 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/onboarding" element={<Intake />} />
               <Route path="/app" element={<AppShell />}>
                 <Route index element={<Dashboard />} />
                 <Route path="roadmap" element={<Roadmap />} />
+                <Route path="canvas" element={<Canvas />} />
+                <Route path="validation" element={<Validation />} />
                 <Route path="module/:id" element={<Module />} />
-                <Route path="settings" element={<Settings />} />
+                <Route path="settings" element={<Settings />} />on
               </Route>
               <Route path="/dashboard" element={<Navigate to="/app" replace />} />
               <Route path="*" element={<NotFound />} />

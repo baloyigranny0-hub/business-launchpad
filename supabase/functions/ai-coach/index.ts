@@ -2,7 +2,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-3-flash-preview";
+const MODEL = "openai/gpt-6-astra";
 
 type Ctx = Record<string, unknown>;
 
@@ -97,7 +97,7 @@ async function callGateway(body: Record<string, unknown>) {
       "Lovable-API-Key": key,
       "X-Lovable-AIG-SDK": "fetch",
     },
-    body: JSON.stringify({ model: MODEL, ...body }),
+    body: JSON.stringify({ model: MODEL, reasoning_effort: "low", ...body }),
   });
   if (!res.ok) {
     const text = await res.text();

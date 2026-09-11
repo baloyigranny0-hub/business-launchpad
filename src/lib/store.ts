@@ -135,9 +135,9 @@ export async function bindCloud(userId: string | null) {
     current = {
       onboarded: data.onboarded ?? false,
       business: { ...emptyBusiness, ...((data.business ?? {}) as Partial<BusinessProfile>) },
-      completed: ((data.completed ?? {}) as Record<string, boolean>) ?? {},
-      notes: ((data.notes ?? {}) as Record<string, string>) ?? {},
-      canvas: ((data.lean_canvas ?? {}) as Record<string, string>) ?? {},
+      completed: (data.completed ?? {}) as Record<string, boolean>,
+      notes: (data.notes ?? {}) as Record<string, string>,
+      canvas: (data.lean_canvas ?? {}) as Record<string, string>,
       analysis: plan && plan.summary ? (plan as Analysis) : null,
     };
     persistLocal(current);

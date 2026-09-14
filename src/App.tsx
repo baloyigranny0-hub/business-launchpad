@@ -14,7 +14,10 @@ import Roadmap from "./pages/Roadmap";
 import Module from "./pages/Module";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
+import Compliance from "./pages/Compliance";
+import ResetPassword from "./pages/ResetPassword";
 import { AppShell } from "./components/AppShell";
+import { RequireAuth, RequireBusinessContext } from "./components/RouteGuards";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { bindCloud } from "./lib/store";
 
@@ -40,14 +43,20 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/onboarding" element={<Intake />} />
-              <Route path="/app" element={<AppShell />}>
-                <Route index element={<Dashboard />} />
-                <Route path="roadmap" element={<Roadmap />} />
-                <Route path="canvas" element={<Canvas />} />
-                <Route path="validation" element={<Validation />} />
-                <Route path="module/:id" element={<Module />} />
-                <Route path="settings" element={<Settings />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route element={<RequireAuth />}>
+                <Route path="/onboarding" element={<Intake />} />
+                <Route element={<RequireBusinessContext />}>
+                  <Route path="/app" element={<AppShell />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="roadmap" element={<Roadmap />} />
+                    <Route path="canvas" element={<Canvas />} />
+                    <Route path="validation" element={<Validation />} />
+                    <Route path="compliance" element={<Compliance />} />
+                    <Route path="module/:id" element={<Module />} />
+                    <Route path="settings" element={<Settings />} />
+                  </Route>
+                </Route>
               </Route>
               <Route path="/dashboard" element={<Navigate to="/app" replace />} />
               <Route path="*" element={<NotFound />} />

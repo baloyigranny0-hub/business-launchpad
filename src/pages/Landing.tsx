@@ -33,7 +33,7 @@ const Landing = () => {
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground hover:opacity-90 shadow-glow">
-              <Link to="/onboarding">Start your business <ArrowRight className="ml-1 size-4" /></Link>
+              <Link to="/auth">Start your business <ArrowRight className="ml-1 size-4" /></Link>
             </Button>
             <Button asChild size="lg" variant="outline"><Link to="/app">Explore dashboard</Link></Button>
           </div>
@@ -70,7 +70,7 @@ const Landing = () => {
           <h2 className="font-display text-4xl">Stop guessing what to do next.</h2>
           <p className="text-muted-foreground mt-3 max-w-xl mx-auto">A calm, structured path from idea to revenue. Built for founders who'd rather build than research.</p>
           <Button asChild size="lg" className="mt-8 bg-gradient-primary text-primary-foreground hover:opacity-90">
-            <Link to="/onboarding">Build my roadmap</Link>
+            <Link to="/auth">Build my roadmap</Link>
           </Button>
         </div>
       </section>

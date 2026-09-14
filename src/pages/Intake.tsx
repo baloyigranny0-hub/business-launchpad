@@ -9,6 +9,7 @@ import { analyzeIdea } from "@/lib/coach";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Compass, Loader2, Sparkles } from "lucide-react";
 import { APP_NAME } from "@/lib/roadmap";
+import { useAuth } from "@/lib/auth";
 
 const Choice = ({
   options,
@@ -40,6 +41,7 @@ const Choice = ({
 const Intake = () => {
   const nav = useNavigate();
   const { state, setBusiness, completeOnboarding, setAnalysis } = useStore();
+  const { saveProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const b = state.business;
@@ -130,7 +132,7 @@ const Intake = () => {
           </div>
         </div>
       ),
-      canNext: !!b.country,
+      canNext: !!b.country && !!b.city,
     },
     {
       title: "What are you working with?",
@@ -186,6 +188,7 @@ const Intake = () => {
       const analysis = await analyzeIdea();
       setAnalysis(analysis);
       completeOnboarding();
+      await saveProfile({ preferred_industry: b.industry, country: b.country, city: b.city, onboarding_complete: true });
       nav("/app");
     } catch (e) {
       completeOnboarding();

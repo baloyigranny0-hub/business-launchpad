@@ -38,11 +38,45 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          city: string
+          country: string
+          created_at: string
+          display_name: string
+          onboarding_complete: boolean
+          preferred_industry: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city?: string
+          country?: string
+          created_at?: string
+          display_name?: string
+          onboarding_complete?: boolean
+          preferred_industry?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string
+          country?: string
+          created_at?: string
+          display_name?: string
+          onboarding_complete?: boolean
+          preferred_industry?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           business: Json
           completed: Json
           created_at: string
+          industry_compliance: Json
           intake: Json
           lean_canvas: Json
           notes: Json
@@ -57,6 +91,7 @@ export type Database = {
           business?: Json
           completed?: Json
           created_at?: string
+          industry_compliance?: Json
           intake?: Json
           lean_canvas?: Json
           notes?: Json
@@ -71,6 +106,7 @@ export type Database = {
           business?: Json
           completed?: Json
           created_at?: string
+          industry_compliance?: Json
           intake?: Json
           lean_canvas?: Json
           notes?: Json

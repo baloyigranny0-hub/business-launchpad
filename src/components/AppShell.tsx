@@ -8,7 +8,6 @@ import {
   FileText,
   Settings,
   Compass,
-  LogIn,
   LogOut,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/roadmap";

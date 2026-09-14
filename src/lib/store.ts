@@ -34,6 +34,13 @@ export interface Analysis {
   generatedAt?: string;
 }
 
+export interface ComplianceState {
+  packId: string;
+  packLabel: string;
+  content: string;
+  updatedAt?: string;
+}
+
 export interface AppState {
   onboarded: boolean;
   business: BusinessProfile;
@@ -41,6 +48,7 @@ export interface AppState {
   notes: Record<string, string>;
   canvas: Record<string, string>;
   analysis: Analysis | null;
+  compliance: ComplianceState;
 }
 
 const emptyBusiness: BusinessProfile = {
@@ -63,6 +71,7 @@ const empty: AppState = {
   notes: {},
   canvas: {},
   analysis: null,
+  compliance: { packId: "", packLabel: "", content: "" },
 };
 
 function readLocal(): AppState {
@@ -80,6 +89,7 @@ let listeners: Array<() => void> = [];
 let current: AppState = typeof window !== "undefined" ? readLocal() : empty;
 let cloudUserId: string | null = null;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let cloudReady = false;
 
 function notify() {
   listeners.forEach((l) => l());
@@ -99,6 +109,7 @@ async function pushCloud(state: AppState) {
     lean_canvas: state.canvas as never,
     plan: (state.analysis ?? {}) as never,
     onboarded: state.onboarded,
+    industry_compliance: state.compliance as never,
   });
   if (error) console.error("Workspace sync failed", error);
 }
@@ -117,16 +128,25 @@ function write(next: AppState) {
 
 export async function bindCloud(userId: string | null) {
   cloudUserId = userId;
-  if (!userId) return;
+  cloudReady = false;
+  if (!userId) {
+    current = empty;
+    persistLocal(current);
+    cloudReady = true;
+    notify();
+    return;
+  }
 
   const { data, error } = await supabase
     .from("workspaces")
-    .select("business, completed, notes, onboarded, lean_canvas, plan")
+    .select("business, completed, notes, onboarded, lean_canvas, plan, industry_compliance")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
     console.error("Workspace fetch failed", error);
+    cloudReady = true;
+    notify();
     return;
   }
 
@@ -139,12 +159,15 @@ export async function bindCloud(userId: string | null) {
       notes: (data.notes ?? {}) as Record<string, string>,
       canvas: (data.lean_canvas ?? {}) as Record<string, string>,
       analysis: plan && plan.summary ? (plan as Analysis) : null,
+      compliance: { ...empty.compliance, ...((data.industry_compliance ?? {}) as Partial<ComplianceState>) },
     };
     persistLocal(current);
     notify();
   } else {
     await pushCloud(current);
   }
+  cloudReady = true;
+  notify();
 }
 
 export function useStore() {
@@ -181,9 +204,12 @@ export function useStore() {
       canvas: { ...a.canvas, ...current.canvas },
     });
   }, []);
+  const setCompliance = useCallback((value: Partial<ComplianceState>) => {
+    write({ ...current, compliance: { ...current.compliance, ...value } });
+  }, []);
   const reset = useCallback(() => write(empty), []);
 
-  return { state: current, setBusiness, completeOnboarding, toggleStep, setNote, setCanvas, setAnalysis, reset };
+  return { state: current, cloudReady, setBusiness, completeOnboarding, toggleStep, setNote, setCanvas, setAnalysis, setCompliance, reset };
 }
 
 export function isStepDone(state: AppState, stageId: string, stepId: string) {
@@ -202,5 +228,11 @@ export function coachContext() {
     lean_canvas: s.canvas,
     completed_steps: Object.keys(s.completed).filter((k) => s.completed[k]),
     current_phase: s.analysis?.phase ?? "concept",
+    compliance_pack: s.compliance.packLabel || undefined,
   };
+}
+
+export function hasIndustryContext() {
+  const business = current.business;
+  return Boolean(business.idea.trim() && business.customer.trim() && business.industry.trim() && business.country.trim() && business.city.trim());
 }

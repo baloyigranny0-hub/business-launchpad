@@ -1,10 +1,23 @@
 // Foundry AI coach — analysis, Q&A and document drafting.
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "npm:zod@3";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "openai/gpt-6-astra";
 
 type Ctx = Record<string, unknown>;
+
+const RequestSchema = z.object({
+  action: z.enum(["analyze", "ask", "draft", "compliance"]),
+  context: z.record(z.unknown()),
+  question: z.string().trim().max(4000).optional(),
+  history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) })).max(20).optional(),
+  target: z.string().trim().max(2000).optional(),
+  packId: z.string().trim().max(80).optional(),
+  packLabel: z.string().trim().max(120).optional(),
+  focus: z.array(z.string().trim().max(200)).max(12).optional(),
+});
 
 const ANALYZE_SCHEMA = {
   type: "object",
@@ -82,10 +95,16 @@ function contextBlock(ctx: Ctx) {
   return `FOUNDER CONTEXT (JSON):\n${JSON.stringify(ctx ?? {}, null, 2)}`;
 }
 
+function hasRequiredContext(ctx: Ctx) {
+  const business = ctx.business as Record<string, unknown> | undefined;
+  return [business?.idea, business?.customer, business?.industry, business?.country, business?.city].every((value) => typeof value === "string" && value.trim().length > 0);
+}
+
 const BASE = `You are Foundry Coach, a pragmatic startup coach for first-time founders.
 You know company registration, tax and municipal compliance, branding, business planning, operations, marketing, sales and growth.
-You always give concrete, local, actionable guidance for the founder's country and industry — real institution names, real document names, realistic costs and timelines.
-Never be vague. Never give a generic checklist. Speak plainly, no jargon, no fluff.`;
+Every response must be explicitly associated with the founder's stated industry, country, city or municipality, customers, and current business stage.
+Give concrete, local, actionable guidance — real institution names, document names, realistic costs and timelines. Clearly label facts the founder must verify because rules change.
+Never give a generic checklist, invent an authority, or silently assume missing context. Speak plainly, no jargon, no fluff.`;
 
 async function callGateway(body: Record<string, unknown>) {
   const key = Deno.env.get("LOVABLE_API_KEY");
@@ -111,7 +130,18 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { action, context, question, history, target } = await req.json();
+    const authorization = req.headers.get("Authorization");
+    const url = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!authorization || !url || !anonKey) return err(401, "Sign in to use the Foundry coach.");
+    const client = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
+    const { data: authData, error: authError } = await client.auth.getUser();
+    if (authError || !authData.user) return err(401, "Your session has expired. Sign in again.");
+
+    const parsed = RequestSchema.safeParse(await req.json());
+    if (!parsed.success) return err(400, "That request is incomplete or too long.");
+    const { action, context, question, history, target, packId, packLabel, focus } = parsed.data;
+    if (!hasRequiredContext(context)) return err(400, "Add your industry, country, city, customer and business idea before using the coach.");
 
     if (action === "analyze") {
       const r = await callGateway({
@@ -152,6 +182,32 @@ Do all of the following:
         messages: [
           { role: "system", content: `${BASE}\nProduce a ready-to-use draft in markdown. No preamble, no "here is". Just the document.` },
           { role: "user", content: `${contextBlock(context)}\n\nDraft this for my business: ${String(target ?? "")}` },
+        ],
+      });
+      if (r.error) return err(r.status!, r.text!);
+      return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
+    }
+
+    if (action === "compliance") {
+      const r = await callGateway({
+        messages: [
+          { role: "system", content: `${BASE}\nYou are producing a practical compliance workspace, not legal advice. Use markdown. No preamble.` },
+          { role: "user", content: `${contextBlock(context)}
+
+Create a personalized compliance pack using starter pack ${String(packLabel ?? packId ?? "custom")} and these sector focus areas: ${(focus ?? []).join(", ")}.
+
+Include these sections:
+1. Applicability summary tied to this exact business model and customer.
+2. National registrations and tax obligations.
+3. City or municipal permissions, zoning, premises, signage, fire, health and safety requirements that may apply.
+4. Industry regulator, licences, permits, certifications and professional registrations.
+5. Required evidence and documents, naming forms where reliably known.
+6. A table with requirement, authority, when needed, owner, estimated fee/time, renewal date or frequency, status checkbox, and verification source.
+7. Worker, customer, data, environmental and insurance obligations relevant to this sector.
+8. A 30-day order of action split into Do now, Before trading, and Renew or monitor.
+9. A verification box listing uncertain or changing rules that must be confirmed directly.
+
+Never substitute another industry's rules. If a requirement depends on activities not stated, phrase it as a clear condition such as “If you prepare food on site…”.` },
         ],
       });
       if (r.error) return err(r.status!, r.text!);

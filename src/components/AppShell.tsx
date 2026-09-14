@@ -8,7 +8,6 @@ import {
   FileText,
   Settings,
   Compass,
-  LogIn,
   LogOut,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/roadmap";
@@ -22,7 +21,7 @@ const links = [
   { to: "/app/validation", label: "Idea score", icon: Lightbulb },
   { to: "/app/canvas", label: "Lean Canvas", icon: LayoutGrid },
   { to: "/app/roadmap", label: "Roadmap", icon: Map },
-  { to: "/app/module/compliance", label: "Compliance", icon: ShieldCheck },
+  { to: "/app/compliance", label: "Compliance", icon: ShieldCheck },
   { to: "/app/module/documents", label: "Documents", icon: FileText },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
@@ -69,7 +68,7 @@ export const AppShell = () => {
             <div className="font-medium truncate">{state.business.name || "Untitled"}</div>
             {user && <div className="text-xs text-muted-foreground mt-2 truncate">{user.email}</div>}
           </div>
-          {user ? (
+          {user && (
             <Button
               variant="outline"
               size="sm"
@@ -80,10 +79,6 @@ export const AppShell = () => {
               }}
             >
               <LogOut className="size-4 mr-2" /> Sign out
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/auth")}>
-              <LogIn className="size-4 mr-2" /> Sign in to sync
             </Button>
           )}
         </div>

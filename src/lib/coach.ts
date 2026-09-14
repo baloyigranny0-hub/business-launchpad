@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-import { coachContext, type Analysis } from "@/lib/store";
+import { coachContext, hasIndustryContext, type Analysis } from "@/lib/store";
 
 async function invoke<T>(body: Record<string, unknown>): Promise<T> {
+  if (!hasIndustryContext()) throw new Error("Add your industry, country, city, customer and business idea before asking the coach.");
   const { data, error } = await supabase.functions.invoke("ai-coach", { body });
   if (error) {
     const msg = (data as { error?: string } | null)?.error ?? error.message;
@@ -21,4 +22,8 @@ export function askCoach(question: string, history: { role: string; content: str
 
 export function draftDocument(target: string) {
   return invoke<{ text: string }>({ action: "draft", target, context: coachContext() });
+}
+
+export function generateCompliancePack(packId: string, packLabel: string, focus: string[]) {
+  return invoke<{ text: string }>({ action: "compliance", packId, packLabel, focus, context: coachContext() });
 }

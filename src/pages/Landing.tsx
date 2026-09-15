@@ -19,7 +19,7 @@ const Landing = () => {
 
       {/* Hero */}
       <section className="relative">
-        <div className="absolute inset-0 grid-bg opacity-30 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 grid-bg opacity-30 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
         <div className="container relative pt-16 pb-24 text-center max-w-4xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-4 py-1.5 text-xs text-muted-foreground mb-8">
             <span className="size-1.5 rounded-full bg-primary animate-pulse" />
@@ -66,7 +66,7 @@ const Landing = () => {
       {/* CTA */}
       <section className="container pb-24">
         <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-card p-12 text-center">
-          <div className="absolute inset-0 bg-gradient-primary opacity-[0.06]" />
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-primary opacity-[0.06]" />
           <h2 className="font-display text-4xl">Stop guessing what to do next.</h2>
           <p className="text-muted-foreground mt-3 max-w-xl mx-auto">A calm, structured path from idea to revenue. Built for founders who'd rather build than research.</p>
           <Button asChild size="lg" className="mt-8 bg-gradient-primary text-primary-foreground hover:opacity-90">

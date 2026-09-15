@@ -161,7 +161,7 @@ Do all of the following:
         ],
         response_format: { type: "json_schema", json_schema: { name: "analysis", strict: true, schema: ANALYZE_SCHEMA } },
       });
-      if (r.error) return err(r.status!, r.text!);
+      if (r.error) return err(r.status ?? 500, r.text ?? "The coach could not complete the analysis.");
       const content = r.json.choices?.[0]?.message?.content ?? "{}";
       return ok(JSON.parse(content));
     }
@@ -173,7 +173,7 @@ Do all of the following:
         { role: "user", content: String(question ?? "") },
       ];
       const r = await callGateway({ messages: msgs });
-      if (r.error) return err(r.status!, r.text!);
+      if (r.error) return err(r.status ?? 500, r.text ?? "The coach could not answer that question.");
       return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
     }
 
@@ -184,7 +184,7 @@ Do all of the following:
           { role: "user", content: `${contextBlock(context)}\n\nDraft this for my business: ${String(target ?? "")}` },
         ],
       });
-      if (r.error) return err(r.status!, r.text!);
+      if (r.error) return err(r.status ?? 500, r.text ?? "The coach could not create that draft.");
       return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
     }
 
@@ -210,7 +210,7 @@ Include these sections:
 Never substitute another industry's rules. If a requirement depends on activities not stated, phrase it as a clear condition such as “If you prepare food on site…”.` },
         ],
       });
-      if (r.error) return err(r.status!, r.text!);
+      if (r.error) return err(r.status ?? 500, r.text ?? "The coach could not create that compliance pack.");
       return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
     }
 

@@ -106,13 +106,15 @@ const Module = () => {
                     rows={2}
                     className="mt-3 bg-background/50 text-sm"
                   />
-                  {step.draft && (
+                  {step.draft && (() => {
+                    const target = step.draft;
+                    return (
                     <Button
                       variant="outline"
                       size="sm"
                       className="mt-3"
                       disabled={drafting === step.id}
-                      onClick={() => draft(step.id, step.draft!)}
+                      onClick={() => draft(step.id, target)}
                     >
                       {drafting === step.id ? (
                         <Loader2 className="size-4 mr-2 animate-spin" />
@@ -121,7 +123,8 @@ const Module = () => {
                       )}
                       Draft this for me
                     </Button>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             </div>

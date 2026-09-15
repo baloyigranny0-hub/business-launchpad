@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,8 +57,20 @@ const Auth = () => {
 
   const google = async () => {
     sessionStorage.setItem("foundry-auth-return", from);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth` } });
-    if (error) toast({ title: "Could not continue with Google", description: error.message, variant: "destructive" });
+    setBusy(true);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+      extraParams: { prompt: "select_account" },
+    });
+    if (result.error) {
+      sessionStorage.removeItem("foundry-auth-return");
+      toast({ title: "Could not continue with Google", description: result.error.message, variant: "destructive" });
+      setBusy(false);
+      return;
+    }
+    if (result.redirected) return;
+    nav(from, { replace: true });
+    setBusy(false);
   };
 
   return (
@@ -75,7 +88,7 @@ const Auth = () => {
         <p className="text-muted-foreground mt-2 mb-8">
           {forgot ? "We’ll email you a secure recovery link." : mode === "signin" ? "Sign in to open your private business workspace." : "Create your private business workspace."}
         </p>
-        {!forgot && <Button type="button" variant="outline" className="w-full mb-4" onClick={google}><Chrome className="size-4 mr-2" /> Continue with Google</Button>}
+        {!forgot && <Button type="button" variant="outline" className="w-full mb-4" onClick={google} disabled={busy}><Chrome className="size-4 mr-2" /> Continue with Google</Button>}
         {!forgot && <div className="flex items-center gap-3 mb-4 text-xs text-muted-foreground"><span className="h-px bg-border flex-1" /><span>or use email</span><span className="h-px bg-border flex-1" /></div>}
         <form onSubmit={submit} className="rounded-2xl bg-gradient-card border border-border p-6 space-y-4 shadow-card">
           {!forgot && <div>

@@ -20,8 +20,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) {
+        setSession(null);
+        setLoading(false);
+        return;
+      }
+      const { data: trusted, error } = await supabase.auth.getUser();
+      setSession(error || !trusted.user ? null : data.session);
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();

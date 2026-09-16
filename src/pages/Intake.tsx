@@ -182,6 +182,22 @@ const Intake = () => {
   const cur = steps[step];
   const last = step === steps.length - 1;
 
+  const hints = [
+    "Tell us a bit more about your idea first — a sentence or two is enough.",
+    "Add who your customer is and your industry to continue.",
+    "Add your country and your city or municipality to continue.",
+    "Tell us what you want to achieve in the next 90 days.",
+  ];
+
+  const next = () => {
+    if (!cur.canNext) {
+      toast.error(hints[step]);
+      return;
+    }
+    if (last) finish();
+    else setStep(step + 1);
+  };
+
   const finish = async () => {
     setBusy(true);
     try {
@@ -232,7 +248,7 @@ const Intake = () => {
         </div>
       </header>
 
-      <div className="flex-1 container max-w-xl flex flex-col justify-center pb-20">
+      <div className="flex-1 container max-w-xl flex flex-col justify-start md:justify-center pb-32 md:pb-20">
         <div className="h-1 w-full bg-surface rounded-full overflow-hidden mb-10">
           <div className="h-full bg-gradient-primary transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
         </div>
@@ -242,17 +258,19 @@ const Intake = () => {
 
         <div className="rounded-2xl bg-gradient-card border border-border p-6 shadow-card">{cur.content}</div>
 
-        <div className="flex items-center justify-between mt-8">
-          <Button variant="ghost" onClick={() => (step === 0 ? nav("/") : setStep(step - 1))}>
-            <ArrowLeft className="mr-1 size-4" /> Back
-          </Button>
-          <Button
-            disabled={!cur.canNext}
-            onClick={() => (last ? finish() : setStep(step + 1))}
-            className="bg-gradient-primary text-primary-foreground hover:opacity-90"
-          >
-            {last ? "Build my roadmap" : "Continue"} <ArrowRight className="ml-1 size-4" />
-          </Button>
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 py-3 md:static md:border-0 md:bg-transparent md:backdrop-blur-none md:px-0 md:py-0 md:mt-8">
+          <div className="container max-w-xl flex items-center justify-between gap-3 px-0">
+            <Button variant="ghost" onClick={() => (step === 0 ? nav("/") : setStep(step - 1))}>
+              <ArrowLeft className="mr-1 size-4" /> Back
+            </Button>
+            <Button
+              onClick={next}
+              aria-disabled={!cur.canNext}
+              className={`bg-gradient-primary text-primary-foreground hover:opacity-90 ${!cur.canNext ? "opacity-60" : ""}`}
+            >
+              {last ? "Build my roadmap" : "Continue"} <ArrowRight className="ml-1 size-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

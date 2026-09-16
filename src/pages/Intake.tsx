@@ -258,17 +258,19 @@ const Intake = () => {
 
         <div className="rounded-2xl bg-gradient-card border border-border p-6 shadow-card">{cur.content}</div>
 
-        <div className="flex items-center justify-between mt-8">
-          <Button variant="ghost" onClick={() => (step === 0 ? nav("/") : setStep(step - 1))}>
-            <ArrowLeft className="mr-1 size-4" /> Back
-          </Button>
-          <Button
-            disabled={!cur.canNext}
-            onClick={() => (last ? finish() : setStep(step + 1))}
-            className="bg-gradient-primary text-primary-foreground hover:opacity-90"
-          >
-            {last ? "Build my roadmap" : "Continue"} <ArrowRight className="ml-1 size-4" />
-          </Button>
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 py-3 md:static md:border-0 md:bg-transparent md:backdrop-blur-none md:px-0 md:py-0 md:mt-8">
+          <div className="container max-w-xl flex items-center justify-between gap-3 px-0">
+            <Button variant="ghost" onClick={() => (step === 0 ? nav("/") : setStep(step - 1))}>
+              <ArrowLeft className="mr-1 size-4" /> Back
+            </Button>
+            <Button
+              onClick={next}
+              aria-disabled={!cur.canNext}
+              className={`bg-gradient-primary text-primary-foreground hover:opacity-90 ${!cur.canNext ? "opacity-60" : ""}`}
+            >
+              {last ? "Build my roadmap" : "Continue"} <ArrowRight className="ml-1 size-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

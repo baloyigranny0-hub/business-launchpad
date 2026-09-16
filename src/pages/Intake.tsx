@@ -46,6 +46,7 @@ const Intake = () => {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const b = state.business;
+  const kbInset = useKeyboardInset();
 
   const steps = [
     {

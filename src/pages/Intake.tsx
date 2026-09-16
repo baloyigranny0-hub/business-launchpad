@@ -248,7 +248,7 @@ const Intake = () => {
         </div>
       </header>
 
-      <div className="flex-1 container max-w-xl flex flex-col justify-center pb-20">
+      <div className="flex-1 container max-w-xl flex flex-col justify-start md:justify-center pb-32 md:pb-20">
         <div className="h-1 w-full bg-surface rounded-full overflow-hidden mb-10">
           <div className="h-full bg-gradient-primary transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
         </div>

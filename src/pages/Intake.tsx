@@ -182,6 +182,22 @@ const Intake = () => {
   const cur = steps[step];
   const last = step === steps.length - 1;
 
+  const hints = [
+    "Tell us a bit more about your idea first — a sentence or two is enough.",
+    "Add who your customer is and your industry to continue.",
+    "Add your country and your city or municipality to continue.",
+    "Tell us what you want to achieve in the next 90 days.",
+  ];
+
+  const next = () => {
+    if (!cur.canNext) {
+      toast.error(hints[step]);
+      return;
+    }
+    if (last) finish();
+    else setStep(step + 1);
+  };
+
   const finish = async () => {
     setBusy(true);
     try {

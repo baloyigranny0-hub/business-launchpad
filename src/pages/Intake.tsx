@@ -190,13 +190,32 @@ const Intake = () => {
     "Tell us what you want to achieve in the next 90 days.",
   ];
 
+  const lastFire = useRef(0);
+
   const next = () => {
+    // A pointerdown + click pair on touch devices can both reach us; debounce.
+    const now = Date.now();
+    if (now - lastFire.current < 500) return;
+    lastFire.current = now;
+
+    // Close the on-screen keyboard so the layout settles before we move on.
+    const active = document.activeElement as HTMLElement | null;
+    if (active && typeof active.blur === "function") active.blur();
+
     if (!cur.canNext) {
       toast.error(hints[step]);
       return;
     }
     if (last) finish();
     else setStep(step + 1);
+  };
+
+  const back = () => {
+    const now = Date.now();
+    if (now - lastFire.current < 500) return;
+    lastFire.current = now;
+    if (step === 0) nav("/");
+    else setStep(step - 1);
   };
 
   const finish = async () => {

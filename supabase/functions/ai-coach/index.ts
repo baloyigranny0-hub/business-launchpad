@@ -172,7 +172,7 @@ ${image ? "A screenshot of the current screen is attached. Sensitive areas may a
       return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
     }
 
-    if (!hasRequiredContext(context)) return err(400, "Add your industry, country, city, customer and business idea before using the coach.");
+
 
     if (action === "analyze") {
       const r = await callGateway({

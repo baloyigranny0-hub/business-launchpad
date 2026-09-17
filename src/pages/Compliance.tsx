@@ -33,6 +33,15 @@ const Compliance = () => {
         <div className="flex gap-3 text-xs text-muted-foreground"><span className="flex items-center gap-1"><MapPin className="size-4" /> {state.business.city}</span><span className="flex items-center gap-1"><Building2 className="size-4" /> {state.business.stage}</span></div>
       </div>
 
+      <div className="mb-8 rounded-xl border border-border bg-gradient-card p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-medium">Stuck on a government form?</h2>
+          <p className="text-sm text-muted-foreground mt-1">Show the coach your SARS eFiling, CIPC/BizPortal, UI-19 or COIDA screen and it explains each field.</p>
+        </div>
+        <FormCoach />
+      </div>
+
+
       <section aria-labelledby="pack-title">
         <div className="flex items-center gap-2 mb-4"><ShieldCheck className="size-5 text-primary" /><h2 id="pack-title" className="font-display text-2xl">Choose a starter pack</h2></div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">

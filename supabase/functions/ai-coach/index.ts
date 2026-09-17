@@ -145,7 +145,33 @@ Deno.serve(async (req) => {
 
     const parsed = RequestSchema.safeParse(await req.json());
     if (!parsed.success) return err(400, "That request is incomplete or too long.");
-    const { action, context, question, history, target, packId, packLabel, focus } = parsed.data;
+    const { action, context, question, history, target, packId, packLabel, focus, formId, formLabel, formSection, image } = parsed.data;
+    if (!hasRequiredContext(context)) return err(400, "Add your industry, country, city, customer and business idea before using the coach.");
+
+    if (action === "formscreen") {
+      const userContent: Record<string, unknown>[] = [
+        {
+          type: "text",
+          text: `${contextBlock(context)}
+
+Platform/form the founder selected: ${formLabel ?? formId ?? "not selected"}${formSection ? ` — section/field: ${formSection}` : ""}
+Founder's question: ${question?.trim() || "I am stuck on this screen. Tell me exactly what to do next."}
+${image ? "A screenshot of the current screen is attached. Sensitive areas may already be blacked out — never ask what is behind a mask." : "No screenshot was provided — give text-based guidance for the selected form and section, and say what to look for on screen."}`,
+        },
+      ];
+      if (image) userContent.push({ type: "image_url", image_url: { url: image } });
+
+      const r = await callGateway({
+        messages: [
+          { role: "system", content: FORM_COACH },
+          ...(Array.isArray(history) ? history.slice(-10) : []),
+          { role: "user", content: userContent },
+        ],
+      });
+      if (r.error) return err(r.status ?? 500, r.text ?? "The form coach could not read that screen.");
+      return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
+    }
+
     if (!hasRequiredContext(context)) return err(400, "Add your industry, country, city, customer and business idea before using the coach.");
 
     if (action === "analyze") {

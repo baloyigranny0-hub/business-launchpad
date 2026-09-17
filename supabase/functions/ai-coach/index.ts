@@ -9,7 +9,7 @@ const MODEL = "openai/gpt-6-astra";
 type Ctx = Record<string, unknown>;
 
 const RequestSchema = z.object({
-  action: z.enum(["analyze", "ask", "draft", "compliance"]),
+  action: z.enum(["analyze", "ask", "draft", "compliance", "formscreen"]),
   context: z.record(z.unknown()),
   question: z.string().trim().max(4000).optional(),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) })).max(20).optional(),
@@ -17,7 +17,12 @@ const RequestSchema = z.object({
   packId: z.string().trim().max(80).optional(),
   packLabel: z.string().trim().max(120).optional(),
   focus: z.array(z.string().trim().max(200)).max(12).optional(),
+  formId: z.string().trim().max(80).optional(),
+  formLabel: z.string().trim().max(200).optional(),
+  formSection: z.string().trim().max(200).optional(),
+  image: z.string().startsWith("data:image/").max(7_000_000).optional(),
 });
+
 
 const ANALYZE_SCHEMA = {
   type: "object",

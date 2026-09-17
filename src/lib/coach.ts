@@ -27,3 +27,15 @@ export function draftDocument(target: string) {
 export function generateCompliancePack(packId: string, packLabel: string, focus: string[]) {
   return invoke<{ text: string }>({ action: "compliance", packId, packLabel, focus, context: coachContext() });
 }
+
+export function askFormCoach(args: {
+  formId?: string;
+  formLabel?: string;
+  formSection?: string;
+  question?: string;
+  image?: string;
+  history: { role: string; content: string }[];
+}) {
+  return invoke<{ text: string }>({ action: "formscreen", ...args, context: coachContext() });
+}
+

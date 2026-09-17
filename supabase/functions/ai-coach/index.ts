@@ -9,7 +9,7 @@ const MODEL = "openai/gpt-6-astra";
 type Ctx = Record<string, unknown>;
 
 const RequestSchema = z.object({
-  action: z.enum(["analyze", "ask", "draft", "compliance"]),
+  action: z.enum(["analyze", "ask", "draft", "compliance", "formscreen"]),
   context: z.record(z.unknown()),
   question: z.string().trim().max(4000).optional(),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) })).max(20).optional(),
@@ -17,7 +17,12 @@ const RequestSchema = z.object({
   packId: z.string().trim().max(80).optional(),
   packLabel: z.string().trim().max(120).optional(),
   focus: z.array(z.string().trim().max(200)).max(12).optional(),
+  formId: z.string().trim().max(80).optional(),
+  formLabel: z.string().trim().max(200).optional(),
+  formSection: z.string().trim().max(200).optional(),
+  image: z.string().startsWith("data:image/").max(7_000_000).optional(),
 });
+
 
 const ANALYZE_SCHEMA = {
   type: "object",
@@ -106,6 +111,19 @@ Every response must be explicitly associated with the founder's stated industry,
 Give concrete, local, actionable guidance — real institution names, document names, realistic costs and timelines. Clearly label facts the founder must verify because rules change.
 Never give a generic checklist, invent an authority, or silently assume missing context. Speak plainly, no jargon, no fluff.`;
 
+const FORM_COACH = `You are an expert South African Business Compliance & Form Coach for Foundry.
+You assist founders through government platforms including SARS eFiling, CIPC/BizPortal, Department of Employment & Labour (UIF/UI-19) and COIDA (Compensation Fund).
+
+GUIDELINES:
+1. IDENTIFY: Read the attached screen, and state the exact organisation, form name (e.g. ITR14, RAV01, VAT201, EMP201, CoR14.1, UI-19, W.As.8) and the current step or container. If the screen is unclear, say what you can and cannot see instead of guessing.
+2. LOCATE FRICTION: Point out visible red error highlights, greyed-out options, mandatory-but-empty fields and vague labels causing confusion.
+3. EXPLAIN & GUIDE: Give a concise field-by-field explanation in plain English, 2-3 sentences per field, stating what value belongs there based on the founder's business profile (industry, city, entity type, VAT/PAYE status). End with "Next field to complete:" and one clear action.
+4. SAFETY: You only guide. Never auto-fill, never submit, never ask for or output passwords, OTPs, full 13-digit ID numbers or bank account numbers. If a masked or blacked-out area matters, describe what belongs there generically.
+5. DISCLAIMER: Close with a one-line reminder that this is guidance only and does not replace a registered Tax Practitioner or CA(SA), and that fees, forms and deadlines must be confirmed with the authority.
+
+Format in short markdown with bold field names. Always anchor advice to the founder's stated industry, city/municipality and stage.`;
+
+
 async function callGateway(body: Record<string, unknown>) {
   const key = Deno.env.get("LOVABLE_API_KEY");
   if (!key) throw new Error("Missing LOVABLE_API_KEY");
@@ -140,8 +158,34 @@ Deno.serve(async (req) => {
 
     const parsed = RequestSchema.safeParse(await req.json());
     if (!parsed.success) return err(400, "That request is incomplete or too long.");
-    const { action, context, question, history, target, packId, packLabel, focus } = parsed.data;
+    const { action, context, question, history, target, packId, packLabel, focus, formId, formLabel, formSection, image } = parsed.data;
     if (!hasRequiredContext(context)) return err(400, "Add your industry, country, city, customer and business idea before using the coach.");
+
+    if (action === "formscreen") {
+      const userContent: Record<string, unknown>[] = [
+        {
+          type: "text",
+          text: `${contextBlock(context)}
+
+Platform/form the founder selected: ${formLabel ?? formId ?? "not selected"}${formSection ? ` — section/field: ${formSection}` : ""}
+Founder's question: ${question?.trim() || "I am stuck on this screen. Tell me exactly what to do next."}
+${image ? "A screenshot of the current screen is attached. Sensitive areas may already be blacked out — never ask what is behind a mask." : "No screenshot was provided — give text-based guidance for the selected form and section, and say what to look for on screen."}`,
+        },
+      ];
+      if (image) userContent.push({ type: "image_url", image_url: { url: image } });
+
+      const r = await callGateway({
+        messages: [
+          { role: "system", content: FORM_COACH },
+          ...(Array.isArray(history) ? history.slice(-10) : []),
+          { role: "user", content: userContent },
+        ],
+      });
+      if (r.error) return err(r.status ?? 500, r.text ?? "The form coach could not read that screen.");
+      return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
+    }
+
+
 
     if (action === "analyze") {
       const r = await callGateway({

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { COMPLIANCE_PACKS, CUSTOM_PACK, suggestedPack } from "@/lib/compliance";
 import { generateCompliancePack } from "@/lib/coach";
+import { FormCoach } from "@/components/FormCoach";
+
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

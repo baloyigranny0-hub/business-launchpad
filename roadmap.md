@@ -5,3 +5,5 @@
 - [x] Add Google/email auth and password recovery
 - [x] Enforce industry context across all AI responses
 - [x] Deploy and verify security, builds, and browser flows
+- [x] Add screen-aware form coach for SARS/CIPC/BizPortal/Labour/COIDA screens
+

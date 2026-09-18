@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,12 +23,14 @@ import { bindCloud } from "./lib/store";
 
 const queryClient = new QueryClient();
 
-const CloudBinder = ({ children }: { children: React.ReactNode }) => {
+const CloudBinder = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
+
   useEffect(() => {
     if (loading) return;
     bindCloud(user?.id ?? null);
   }, [user, loading]);
+
   return <>{children}</>;
 };
 

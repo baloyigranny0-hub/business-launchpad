@@ -32,7 +32,7 @@ export const AppShell = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col md:flex-row">
       <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-surface/60 backdrop-blur-xl">
         <Link to="/app" className="px-6 py-6 flex items-center gap-2">
           <div className="size-9 rounded-xl bg-gradient-primary grid place-items-center shadow-glow">
@@ -43,6 +43,7 @@ export const AppShell = () => {
             <div className="text-xs text-muted-foreground mt-1">Founder OS</div>
           </div>
         </Link>
+
         <nav className="px-3 flex flex-col gap-1">
           {links.map((n) => (
             <NavLink
@@ -62,12 +63,14 @@ export const AppShell = () => {
             </NavLink>
           ))}
         </nav>
+
         <div className="mt-auto p-4 space-y-3">
           <div className="rounded-xl bg-gradient-card border border-border p-4">
             <div className="text-xs text-muted-foreground">Business</div>
             <div className="font-medium truncate">{state.business.name || "Untitled"}</div>
             {user && <div className="text-xs text-muted-foreground mt-2 truncate">{user.email}</div>}
           </div>
+
           {user && (
             <Button
               variant="outline"
@@ -83,9 +86,24 @@ export const AppShell = () => {
           )}
         </div>
       </aside>
-      <main className="flex-1 min-w-0 pb-24">
+
+      <div className="md:hidden border-b border-border bg-surface/70 backdrop-blur-xl px-4 py-3 sticky top-0 z-20">
+        <div className="flex items-center justify-between gap-3">
+          <Link to="/app" className="flex items-center gap-2 min-w-0">
+            <div className="size-8 rounded-lg bg-gradient-primary grid place-items-center">
+              <Compass className="size-4 text-primary-foreground" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-display text-lg leading-none">{APP_NAME}</div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      <main className="flex-1 min-w-0 pb-24 md:pb-8">
         <Outlet />
       </main>
+
       <CoachDock />
     </div>
   );

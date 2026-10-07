@@ -1,21 +1,22 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
+import { PageSkeleton } from "./components/PageSkeleton";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Intake from "./pages/Intake";
-import Canvas from "./pages/Canvas";
-import Validation from "./pages/Validation";
-import Dashboard from "./pages/Dashboard";
-import Roadmap from "./pages/Roadmap";
-import Module from "./pages/Module";
-import Settings from "./pages/Settings";
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Intake = lazy(() => import("./pages/Intake"));
+const Canvas = lazy(() => import("./pages/Canvas"));
+const Validation = lazy(() => import("./pages/Validation"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Roadmap = lazy(() => import("./pages/Roadmap"));
+const Module = lazy(() => import("./pages/Module"));
+const Settings = lazy(() => import("./pages/Settings"));
 import Auth from "./pages/Auth";
-import Compliance from "./pages/Compliance";
-import ResetPassword from "./pages/ResetPassword";
+const Compliance = lazy(() => import("./pages/Compliance"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 import { AppShell } from "./components/AppShell";
 import { RequireAuth, RequireBusinessContext } from "./components/RouteGuards";
 import { AuthProvider, useAuth } from "./lib/auth";
@@ -40,6 +41,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <CloudBinder>
+            <Suspense fallback={<PageSkeleton />}>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
@@ -61,6 +63,7 @@ const App = () => (
               <Route path="/dashboard" element={<Navigate to="/app" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </CloudBinder>
         </AuthProvider>
       </BrowserRouter>

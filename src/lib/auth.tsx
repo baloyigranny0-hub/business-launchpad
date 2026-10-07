@@ -19,16 +19,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<AuthCtx["profile"]>(null);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) {
-        setSession(null);
-        setLoading(false);
-        return;
-      }
-      const { data: trusted, error } = await supabase.auth.getUser();
-      setSession(error || !trusted.user ? null : data.session);
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
       setLoading(false);
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+      if (!data.session) return;
+      // Verify in the background; only sign out when the server explicitly rejects the session.
+      supabase.auth.getUser().then(({ data: trusted, error }) => {
+        if (error && (error.status === 401 || error.status === 403) || (!error && !trusted.user)) {
+          supabase.auth.signOut();
+        }
+      });
     });
     return () => sub.subscription.unsubscribe();
   }, []);

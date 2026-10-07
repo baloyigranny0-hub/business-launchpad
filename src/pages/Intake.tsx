@@ -1,3 +1,4 @@
+import { useEffect as usePrefetchEffect } from "react";
 import { useRef, useState } from "react";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { useNavigate } from "react-router-dom";
@@ -47,6 +48,10 @@ const Intake = () => {
   const [busy, setBusy] = useState(false);
   const b = state.business;
   const kbInset = useKeyboardInset();
+  // Warm up the dashboard bundle while the founder finishes the intake.
+  usePrefetchEffect(() => {
+    if (step >= 2) { import("./Dashboard"); import("./Compliance"); }
+  }, [step]);
 
   const steps = [
     {

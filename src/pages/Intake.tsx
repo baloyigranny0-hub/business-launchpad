@@ -48,6 +48,10 @@ const Intake = () => {
   const [busy, setBusy] = useState(false);
   const b = state.business;
   const kbInset = useKeyboardInset();
+  // Warm up the dashboard bundle while the founder finishes the intake.
+  usePrefetchEffect(() => {
+    if (step >= 2) { import("./Dashboard"); import("./Compliance"); }
+  }, [step]);
 
   const steps = [
     {

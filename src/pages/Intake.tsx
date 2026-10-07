@@ -1,3 +1,4 @@
+import { useEffect as usePrefetchEffect } from "react";
 import { useRef, useState } from "react";
 import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import { useNavigate } from "react-router-dom";

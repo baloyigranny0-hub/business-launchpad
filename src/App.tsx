@@ -21,6 +21,7 @@ import { AppShell } from "./components/AppShell";
 import { RequireAuth, RequireBusinessContext } from "./components/RouteGuards";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { bindCloud } from "./lib/store";
+import { RouteMeta } from "./components/RouteMeta";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
       <Toaster />
       <Sonner position="top-center" />
       <BrowserRouter>
+        <RouteMeta />
         <AuthProvider>
           <CloudBinder>
             <Suspense fallback={<PageSkeleton />}>

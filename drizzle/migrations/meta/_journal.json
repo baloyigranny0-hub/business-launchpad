@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793390939808,
+      "tag": "0000_add_execution_plan_and_stress_test",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { PhaseId } from "@/lib/roadmap";
+import type { ExecutionTask, StressTest } from "@/lib/execution";
 
 const KEY = "foundry-state-v2";
 
@@ -14,6 +15,7 @@ export interface BusinessProfile {
   stage: "idea" | "early" | "running";
   team: "solo" | "small" | "growing";
   budget: "none" | "small" | "funded";
+  experience: "novice" | "some" | "experienced";
   goal: string;
 }
 
@@ -49,6 +51,8 @@ export interface AppState {
   canvas: Record<string, string>;
   analysis: Analysis | null;
   compliance: ComplianceState;
+  execution: ExecutionTask[];
+  stress: StressTest | null;
 }
 
 const emptyBusiness: BusinessProfile = {
@@ -61,6 +65,7 @@ const emptyBusiness: BusinessProfile = {
   stage: "idea",
   team: "solo",
   budget: "none",
+  experience: "novice",
   goal: "",
 };
 
@@ -72,6 +77,8 @@ const empty: AppState = {
   canvas: {},
   analysis: null,
   compliance: { packId: "", packLabel: "", content: "" },
+  execution: [],
+  stress: null,
 };
 
 function readLocal(): AppState {

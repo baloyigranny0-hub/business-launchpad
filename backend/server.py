@@ -17,6 +17,8 @@ import asyncio
 from copy import deepcopy
 
 from agents import AGENTS, get_agent
+from foundry_operator.domain import FounderContext
+from foundry_operator.storage import get_foundry_storage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env", override=True)
@@ -243,6 +245,32 @@ elif USE_FIRESTORE_DB:
 else:
     client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=3000)
     db = client[os.environ["DB_NAME"]]
+
+
+_foundry_storage = None
+
+
+def get_operator_storage():
+    """Lazily expose the selected operator adapter without changing legacy db access."""
+    global _foundry_storage
+    if _foundry_storage is None:
+        _foundry_storage = get_foundry_storage(db)
+    return _foundry_storage
+
+
+async def sync_profile_to_founder_context(profile: "Profile"):
+    """Mirror legacy intake into the internal UUID-backed operator context."""
+    context = FounderContext(
+        founder_id=profile.id,
+        auth_subject=profile.session_id,
+        trade=profile.industry,
+        business_name=profile.business_name,
+        business_stage=profile.stage,
+        location_context=profile.country,
+        current_blocker=profile.biggest_blocker or "unknown",
+        profile=profile.model_dump(),
+    )
+    await get_operator_storage().upsert_founder_context(context)
 
 def _csv_env(name: str) -> List[str]:
     return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]
@@ -634,6 +662,10 @@ async def create_profile(payload: ProfileCreate, authorization: Optional[str] = 
     await db.profiles.update_one(
         {"session_id": p.session_id}, {"$set": doc}, upsert=True
     )
+    try:
+        await sync_profile_to_founder_context(p)
+    except Exception:
+        logger.exception("Could not mirror legacy profile into Foundry Operator context")
     return p
 
 

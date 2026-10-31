@@ -1,4 +1,5 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from typing import Any, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -96,9 +97,12 @@ async def get_context(session_id: str = Query(...), authorization: Optional[str]
         tasks = await storage.list_tasks(founder_id, task_date=date.fromisoformat(daily_task_date()))
         templates = await storage.list_templates(founder_id)
         all_tasks = await storage.list_tasks(founder_id)
-        completed = [task for task in all_tasks if task.status == TaskStatus.COMPLETED]
+        today = datetime.now(timezone.utc).astimezone(ZoneInfo("Africa/Johannesburg")).date()
+        week_start = today - timedelta(days=today.weekday())
+        week_tasks = [task for task in all_tasks if week_start <= task.task_date <= today]
+        completed = [task for task in week_tasks if task.status == TaskStatus.COMPLETED]
         revenue = [task for task in completed if task.category == "revenue"]
-        return {"context": context, "sprint": await storage.get_active_sprint(founder_id), "today_tasks": tasks, "templates": templates, "progress": {"completed_this_week": len(completed), "revenue_actions_completed": len(revenue), "active_days": len({task.task_date for task in all_tasks}), "current_stage": context.business_stage}, "next_action": next((task.title for task in tasks if task.status != TaskStatus.COMPLETED), "Ask Foundry for today's plan.")}
+        return {"context": context, "sprint": await storage.get_active_sprint(founder_id), "today_tasks": tasks, "templates": templates, "progress": {"completed_this_week": len(completed), "revenue_actions_completed": len(revenue), "active_days": len({task.task_date for task in week_tasks}), "current_stage": context.business_stage}, "next_action": next((task.title for task in tasks if task.status != TaskStatus.COMPLETED), "Ask Foundry for today's plan.")}
     except Exception as exc:
         raise _error(exc) from exc
 

@@ -13,6 +13,7 @@
 - External message requests return a confirmation state and do not send anything.
 - Plan and audit writes roll back together in the in-memory adapter.
 - Mongo and Supabase storage stay behind the same adapter boundary.
+- Wildcard development CORS does not enable credentialed requests; production origins can be listed explicitly for Firebase-authenticated browser requests.
 
 ## Verification evidence
 

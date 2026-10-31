@@ -887,12 +887,16 @@ async def get_resources(country: Optional[str] = None):
 
 # ------------------------- Wire-up -------------------------
 app.include_router(api_router)
-from foundry_operator.routes import router as operator_router
+try:
+    from .foundry_operator.routes import router as operator_router
+except ImportError:
+    from foundry_operator.routes import router as operator_router
 app.include_router(operator_router)
+cors_origins = _csv_env("CORS_ORIGINS") or ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_credentials="*" not in cors_origins,
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

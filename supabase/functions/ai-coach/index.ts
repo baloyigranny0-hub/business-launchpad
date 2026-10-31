@@ -9,7 +9,7 @@ const MODEL = "openai/gpt-6-astra";
 type Ctx = Record<string, unknown>;
 
 const RequestSchema = z.object({
-  action: z.enum(["analyze", "ask", "draft", "compliance", "formscreen"]),
+  action: z.enum(["analyze", "ask", "draft", "compliance", "formscreen", "orchestrate", "stress"]),
   context: z.record(z.unknown()),
   question: z.string().trim().max(4000).optional(),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) })).max(20).optional(),

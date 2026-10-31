@@ -1,211 +1,94 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { Compass, ArrowsClockwise, Lightning, ArrowRight, FloppyDisk } from "@phosphor-icons/react";
-import RoomHeader, { InfoCard } from "@/components/RoomHeader";
+import React, { useCallback, useEffect, useState } from "react";
+import { ArrowClockwise, Compass, WarningCircle } from "@phosphor-icons/react";
+import RoomHeader from "@/components/RoomHeader";
+import TaskCard from "@/components/operator/TaskCard";
+import OperatorCoachPanel from "@/components/operator/OperatorCoachPanel";
+import ProgressSignals from "@/components/operator/ProgressSignals";
+import TemplateDrawer from "@/components/operator/TemplateDrawer";
 import { api } from "@/lib/api";
-
+import { createDailyPlan, draftOperatorTemplate, getOperatorContext, saveOperatorTemplate, updateOperatorTask } from "@/lib/operatorApi";
 import log from "@/lib/log";
 
-const ROOM_BY_KEY = {
-  briefing: { name: "Briefing Room", color: "#38BDF8" },
-  submission: { name: "Submission Lab", color: "#60A5FA" },
-  legal: { name: "Legal Desk", color: "#D4AF37" },
-  design: { name: "Design Studio", color: "#F472B6" },
-  marketing: { name: "Marketing War Room", color: "#34D399" },
-  ops: { name: "Operations Floor", color: "#FBBF24" },
-  salesgym: { name: "Sales Gym", color: "#FB7185" },
-  vault: { name: "Vault", color: "#A78BFA" },
-};
-
-const EFFORT_COLOR = { low: "#10B981", med: "#F59E0B", high: "#EF4444" };
-
 export default function Journey({ profile, sessionId }) {
+  const [context, setContext] = useState(null);
   const [plan, setPlan] = useState(null);
-  const [model, setModel] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [savedFlash, setSavedFlash] = useState(false);
-  const loadingRef = useRef(false);
-  const navigate = useNavigate();
+  const [legacyPlan, setLegacyPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState("");
+  const [error, setError] = useState("");
+  const [fallback, setFallback] = useState(false);
 
-  const generate = useCallback(async () => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
+  const load = useCallback(async () => {
     setLoading(true);
-    setErr("");
+    setError("");
     try {
-      const r = await api.post("/journey", { session_id: sessionId, profile });
-      setPlan(r.data.plan);
-      setModel(r.data.model || "");
-      setErr("");
-    } catch (e) {
-      log.error("Journey generation failed:", e);
-      setErr((current) => current || e?.response?.data?.detail || "AI is busy. Try again in a moment.");
+      const data = await getOperatorContext(sessionId);
+      setContext(data);
+      if (data.today_tasks?.length) {
+        setPlan({ message: "Your plan for today is already in progress.", bottleneck: data.context?.current_blocker, today_tasks: data.today_tasks, model: "existing_plan", status: "ready" });
+      } else {
+        setPlan(await createDailyPlan(sessionId, "Help me choose today's highest-leverage action."));
+      }
+      setFallback(false);
+    } catch (err) {
+      log.error("Foundry Operator load failed:", err);
+      try {
+        const response = await api.post("/journey", { session_id: sessionId, profile });
+        setLegacyPlan(response.data.plan);
+        setFallback(true);
+        setError("The daily operator is unavailable, so the roadmap view is being shown.");
+      } catch (legacyError) {
+        log.error("Journey fallback failed:", legacyError);
+        setError(err?.response?.data?.detail || "Foundry could not load your operating plan.");
+      }
     } finally {
-      loadingRef.current = false;
       setLoading(false);
     }
-  }, [sessionId, profile]);
+  }, [profile, sessionId]);
 
-  useEffect(() => { generate(); }, [generate]);
+  useEffect(() => { load(); }, [load]);
 
-  const saveToVault = async () => {
-    if (!plan) return;
-    const md = planToMarkdown(plan, profile);
-    await api.post("/vault", {
-      session_id: sessionId,
-      title: `${profile.business_name} — Your Journey`,
-      agent: "journey",
-      content: md,
-    });
-    setSavedFlash(true);
-    setTimeout(() => setSavedFlash(false), 2000);
-  };
-
-  const addAsTask = async (item) => {
-    await api.post("/tasks", { session_id: sessionId, title: item.title, room: item.room || "ops" });
-    alert(`Added "${item.title}" to your Operations task list.`);
-  };
-
-  return (
-    <>
-      <RoomHeader
-        kicker="Your Journey"
-        title="Today, This Week, This Month, Next Quarter"
-        sub={`Personalized for ${profile.business_name}. Built from your stage, knowledge level, and the biggest thing slowing you down.`}
-        accent="#D4AF37" icon={Compass}
-      />
-
-      <div className="flex items-center gap-2 sm:gap-3 mb-5 flex-wrap">
-        <button
-          data-testid="journey-regenerate-btn"
-          onClick={generate}
-          disabled={loading}
-          className="text-xs sm:text-sm px-4 py-2 rounded-full border border-white/15 hover:border-white/30 hover:bg-white/5 disabled:opacity-30 flex items-center gap-2"
-        >
-          <ArrowsClockwise size={14} className={loading ? "animate-spin" : ""} />
-          {loading ? "Generating…" : "Regenerate"}
-        </button>
-        {plan && (
-          <button
-            data-testid="journey-save-btn"
-            onClick={saveToVault}
-            className="text-xs sm:text-sm px-4 py-2 rounded-full bg-[#D4AF37] text-[#0A0F1A] font-semibold flex items-center gap-2"
-          >
-            <FloppyDisk size={14} weight="fill" />
-            {savedFlash ? "Saved!" : "Save to Vault"}
-          </button>
-        )}
-        {model && (
-          <span className="text-[10px] sm:text-[11px] font-mono text-slate-500 truncate max-w-full">
-            powered by {model}
-          </span>
-        )}
-      </div>
-
-      {err && !plan && (
-        <div className="card p-5 mb-5 border-[#EF4444]/40">
-          <div className="text-[#EF4444] text-sm">⚠️ {err}</div>
-          <div className="text-slate-400 text-xs mt-2">The free models are throttled right now. Hit Regenerate.</div>
-        </div>
-      )}
-
-      {!plan && !err && (
-        <div className="grid lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card p-5 animate-pulse">
-              <div className="h-3 w-20 bg-white/5 rounded mb-4" />
-              {[1, 2, 3].map((j) => (
-                <div key={j} className="h-3 w-full bg-white/5 rounded mb-2.5" />
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {plan && (
-        <>
-          {plan.summary && (
-            <div className="card p-5 mb-5 border-l-4" style={{ borderLeftColor: "#D4AF37" }}>
-              <div className="text-[11px] uppercase tracking-[0.25em] text-[#D4AF37] mb-2">Overview</div>
-              <p className="text-slate-200 text-sm sm:text-base leading-relaxed">{plan.summary}</p>
-            </div>
-          )}
-          <div className="grid lg:grid-cols-4 gap-4 sm:gap-5">
-            {(plan.buckets || []).map((bucket, bi) => (
-              <Bucket key={`${bucket.label}-${bi}`} bucket={bucket} onOpen={navigate} onAdd={addAsTask} />
-            ))}
-          </div>
-          <InfoCard title="Tip" accent="#D4AF37">
-            <p className="mt-3 text-sm">
-              Pick ONE thing from <b>Today</b> and finish it before lunch. Momentum compounds.
-            </p>
-          </InfoCard>
-        </>
-      )}
-    </>
-  );
-}
-
-function Bucket({ bucket, onOpen, onAdd }) {
-  return (
-    <div className="card p-4 sm:p-5 flex flex-col">
-      <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-slate-500 mb-3">{bucket.label}</div>
-      <div className="space-y-3 flex-1">
-        {(bucket.items || []).map((item, i) => {
-          const room = ROOM_BY_KEY[item.room] || ROOM_BY_KEY.ops;
-          const effort = EFFORT_COLOR[item.effort] || "#94A3B8";
-          return (
-            <div key={`${item.title}-${i}`} className="border border-white/5 rounded-lg p-3 bg-[#0A0F1A]/40 hover:border-white/15 transition">
-              <div className="flex items-start gap-2">
-                <Lightning size={14} weight="fill" style={{ color: room.color }} className="mt-0.5 shrink-0" />
-                <div className="font-medium text-white text-sm leading-snug flex-1">{item.title}</div>
-              </div>
-              {item.why && <div className="text-xs text-slate-400 mt-1.5 ml-6">{item.why}</div>}
-              <div className="flex items-center gap-2 mt-3 ml-6 flex-wrap">
-                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: room.color + "22", color: room.color }}>
-                  {room.name}
-                </span>
-                {item.effort && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: effort + "22", color: effort }}>
-                    {item.effort} effort
-                  </span>
-                )}
-                <button
-                  onClick={() => onOpen(`/${item.room}`)}
-                  data-testid={`journey-open-${item.room}-${i}`}
-                  className="ml-auto text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
-                >
-                  Open <ArrowRight size={10} />
-                </button>
-                <button
-                  onClick={() => onAdd(item)}
-                  data-testid={`journey-task-${i}`}
-                  className="text-[10px] text-slate-400 hover:text-[#D4AF37]"
-                >
-                  + Task
-                </button>
-              </div>
-            </div>
-          );
-        })}
-        {(bucket.items || []).length === 0 && (
-          <div className="text-slate-500 text-xs">Nothing here yet.</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function planToMarkdown(plan, profile) {
-  const lines = [`# ${profile.business_name} — Your Journey`, ""];
-  if (plan.summary) lines.push(plan.summary, "");
-  for (const b of plan.buckets || []) {
-    lines.push(`## ${b.label}`, "");
-    for (const item of b.items || []) {
-      lines.push(`- **${item.title}** — ${item.why || ""} _(${item.room}, ${item.effort || "med"} effort)_`);
+  async function updateTask(taskId, status, details) {
+    setActionBusy(taskId);
+    setError("");
+    try {
+      const updated = await updateOperatorTask(sessionId, taskId, status, details);
+      setPlan((current) => current ? { ...current, today_tasks: current.today_tasks.map((task) => task.id === updated.id ? updated : task) } : current);
+      setContext((current) => current ? { ...current, today_tasks: current.today_tasks.map((task) => task.id === updated.id ? updated : task) } : current);
+    } catch (err) {
+      setError(err?.response?.data?.detail || "That task update was not saved.");
+    } finally {
+      setActionBusy("");
     }
-    lines.push("");
   }
-  return lines.join("\n");
+
+  async function askOperator(message) {
+    setLoading(true);
+    setError("");
+    try { setPlan(await createDailyPlan(sessionId, message)); } catch (err) { setError(err?.response?.data?.detail || "The operator could not make a plan right now."); } finally { setLoading(false); }
+  }
+
+  async function saveTemplate(draft) {
+    await saveOperatorTemplate(sessionId, draft);
+    setContext(await getOperatorContext(sessionId));
+  }
+
+  if (loading && !plan && !legacyPlan) return <LoadingState />;
+  if (fallback) return <LegacyRoadmap profile={profile} plan={legacyPlan} error={error} onRetry={load} />;
+  const tasks = plan?.today_tasks || context?.today_tasks || [];
+
+  return <>
+    <RoomHeader kicker="Foundry Operator" title="Today is for execution" sub={`A focused operating plan for ${profile.business_name}. One clear next action, then evidence.`} accent="#D4AF37" icon={Compass} />
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="text-xs text-slate-500">South African day boundary: {new Date().toLocaleDateString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "long" })}</div><div className="flex items-center gap-2"><TemplateDrawer trade={profile.industry} templates={context?.templates || []} onDraft={(type, trade, prompt) => draftOperatorTemplate(sessionId, type, trade, prompt)} onSave={saveTemplate} busy={loading} /><button type="button" onClick={load} disabled={loading} aria-label="Refresh daily plan" className="grid h-9 w-9 place-items-center border border-white/10 text-slate-400 hover:border-white/30 hover:text-white disabled:opacity-40"><ArrowClockwise size={15} className={loading ? "animate-spin" : ""} /></button></div></div>
+    {error && <div className="mb-5 flex items-start gap-2 border border-[#EF4444]/30 bg-[#EF4444]/[0.06] p-4 text-sm text-[#FCA5A5]"><WarningCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.8fr)]">
+      <section className="min-w-0"><div className="mb-3 flex items-end justify-between gap-3"><div><div className="text-[10px] uppercase tracking-[0.24em] text-[#D4AF37]">Today's focus</div><h2 className="mt-1 text-xl font-semibold text-white">{tasks.length ? `${tasks.length} task${tasks.length === 1 ? "" : "s"} that move the business` : "Start with one real action"}</h2></div><div className="text-right text-xs text-slate-500">{tasks.filter((task) => task.status === "completed").length}/{tasks.length} complete</div></div><div className="space-y-3">{tasks.map((task) => <TaskCard key={task.id} task={task} onUpdate={updateTask} busy={actionBusy === task.id} />)}</div>{!tasks.length && <div className="border border-dashed border-white/15 p-8 text-center text-sm text-slate-400">Ask the operator to turn your current blocker into a small plan.</div>}</section>
+      <div className="space-y-5"><OperatorCoachPanel bottleneck={plan?.bottleneck || context?.context?.current_blocker} message={plan?.message} model={plan?.model} onPlan={askOperator} loading={loading} /><section className="border border-white/10 bg-[#111A29] p-5"><div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Active sprint</div><h2 className="mt-2 text-base font-semibold text-white">{context?.sprint?.title || "Build your operating base"}</h2><p className="mt-2 text-sm leading-relaxed text-slate-400">{context?.sprint?.objective || "Foundry will keep the next action grounded in your current stage and bottleneck."}</p><div className="mt-4 text-xs text-[#D4AF37]">Next: {plan?.next_action || context?.next_action || "Choose today's first task."}</div></section></div>
+    </div>
+    <div className="mt-5"><ProgressSignals progress={context?.progress} /></div>
+  </>;
 }
+
+function LoadingState() { return <div className="space-y-5"><div className="h-24 animate-pulse border border-white/5 bg-white/[0.03]" /><div className="grid gap-3 lg:grid-cols-[1.4fr_0.8fr]"><div className="h-72 animate-pulse border border-white/5 bg-white/[0.03]" /><div className="h-72 animate-pulse border border-white/5 bg-white/[0.03]" /></div></div>; }
+
+function LegacyRoadmap({ profile, plan, error, onRetry }) { return <><RoomHeader kicker="Your Journey" title="Your founder roadmap" sub={`A temporary roadmap view for ${profile.business_name} while the operator service reconnects.`} accent="#D4AF37" icon={Compass} /><div className="mb-5 flex items-center justify-between gap-3 border border-[#F59E0B]/30 bg-[#F59E0B]/[0.06] p-4 text-sm text-[#FCD34D]"><span>{error}</span><button type="button" onClick={onRetry} className="flex items-center gap-2 border border-[#FCD34D]/40 px-3 py-2 text-xs"><ArrowClockwise size={14} /> Retry operator</button></div><div className="grid gap-4 lg:grid-cols-4">{(plan?.buckets || []).map((bucket) => <section key={bucket.label} className="border border-white/10 bg-[#111A29] p-4"><div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{bucket.label}</div><div className="mt-4 space-y-3">{(bucket.items || []).map((item) => <div key={item.title} className="border border-white/5 p-3"><div className="text-sm font-medium text-white">{item.title}</div><div className="mt-1 text-xs leading-relaxed text-slate-400">{item.why}</div></div>)}</div></section>)}</div></>; }

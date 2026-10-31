@@ -117,6 +117,8 @@ async function pushCloud(state: AppState) {
     plan: (state.analysis ?? {}) as never,
     onboarded: state.onboarded,
     industry_compliance: state.compliance as never,
+    execution_plan: state.execution as never,
+    stress_test: (state.stress ?? {}) as never,
   });
   if (error) console.error("Workspace sync failed", error);
 }
@@ -146,7 +148,7 @@ export async function bindCloud(userId: string | null) {
 
   const { data, error } = await supabase
     .from("workspaces")
-    .select("business, completed, notes, onboarded, lean_canvas, plan, industry_compliance")
+    .select("business, completed, notes, onboarded, lean_canvas, plan, industry_compliance, execution_plan, stress_test")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -167,6 +169,8 @@ export async function bindCloud(userId: string | null) {
       canvas: (data.lean_canvas ?? {}) as Record<string, string>,
       analysis: plan && plan.summary ? (plan as Analysis) : null,
       compliance: { ...empty.compliance, ...((data.industry_compliance ?? {}) as Partial<ComplianceState>) },
+      execution: Array.isArray(data.execution_plan) ? (data.execution_plan as ExecutionTask[]) : [],
+      stress: (data.stress_test as Partial<StressTest> | null)?.risks ? (data.stress_test as StressTest) : null,
     };
     persistLocal(current);
     notify();
@@ -213,6 +217,24 @@ export function useStore() {
   }, []);
   const setCompliance = useCallback((value: Partial<ComplianceState>) => {
     write({ ...current, compliance: { ...current.compliance, ...value } });
+  }, []);
+  const setExecution = useCallback((tasks: ExecutionTask[]) => {
+    write({ ...current, execution: tasks });
+  }, []);
+  const toggleTask = useCallback((taskId: string) => {
+    write({
+      ...current,
+      execution: current.execution.map((t) =>
+        t.id === taskId
+          ? t.status === "done"
+            ? { ...t, status: "open", doneAt: undefined }
+            : { ...t, status: "done", doneAt: new Date().toISOString() }
+          : t
+      ),
+    });
+  }, []);
+  const setStress = useCallback((test: StressTest | null) => {
+    write({ ...current, stress: test });
   }, []);
   const reset = useCallback(() => write(empty), []);
 

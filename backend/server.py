@@ -16,9 +16,14 @@ import json
 import asyncio
 from copy import deepcopy
 
-from agents import AGENTS, get_agent
-from foundry_operator.domain import FounderContext
-from foundry_operator.storage import get_foundry_storage
+try:
+    from .agents import AGENTS, get_agent
+    from .foundry_operator.domain import FounderContext
+    from .foundry_operator.storage import get_foundry_storage
+except ImportError:
+    from agents import AGENTS, get_agent
+    from foundry_operator.domain import FounderContext
+    from foundry_operator.storage import get_foundry_storage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env", override=True)
@@ -882,6 +887,8 @@ async def get_resources(country: Optional[str] = None):
 
 # ------------------------- Wire-up -------------------------
 app.include_router(api_router)
+from foundry_operator.routes import router as operator_router
+app.include_router(operator_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,

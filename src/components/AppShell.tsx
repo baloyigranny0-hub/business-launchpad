@@ -8,6 +8,7 @@ import {
   FileText,
   Settings,
   Compass,
+  Bot,
   LogOut,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/roadmap";
@@ -18,6 +19,7 @@ import { CoachDock } from "@/components/CoachDock";
 
 const links = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/app/execution", label: "Execution", icon: Bot },
   { to: "/app/validation", label: "Idea score", icon: Lightbulb },
   { to: "/app/canvas", label: "Lean Canvas", icon: LayoutGrid },
   { to: "/app/roadmap", label: "Roadmap", icon: Map },

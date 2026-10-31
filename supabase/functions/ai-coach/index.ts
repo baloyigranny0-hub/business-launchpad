@@ -9,7 +9,7 @@ const MODEL = "openai/gpt-6-astra";
 type Ctx = Record<string, unknown>;
 
 const RequestSchema = z.object({
-  action: z.enum(["analyze", "ask", "draft", "compliance", "formscreen"]),
+  action: z.enum(["analyze", "ask", "draft", "compliance", "formscreen", "orchestrate", "stress"]),
   context: z.record(z.unknown()),
   question: z.string().trim().max(4000).optional(),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(8000) })).max(20).optional(),
@@ -94,6 +94,61 @@ const ANALYZE_SCHEMA = {
     },
   },
   required: ["summary", "phase", "phase_reason", "pws", "canvas", "readiness", "priorities"],
+};
+
+const ORCHESTRATE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    tasks: {
+      type: "array",
+      maxItems: 40,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          title: { type: "string" },
+          detail: { type: "string" },
+          due_day: { type: "integer" },
+          priority: { type: "string", enum: ["high", "medium", "low"] },
+          category: {
+            type: "string",
+            enum: ["registration", "compliance", "documents", "branding", "operations", "marketing", "sales", "finance", "validation", "growth"],
+          },
+          institution: { type: ["string", "null"] },
+          requires_approval: { type: "boolean" },
+        },
+        required: ["title", "detail", "due_day", "priority", "category", "institution", "requires_approval"],
+      },
+    },
+  },
+  required: ["tasks"],
+};
+
+const STRESS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    verdict: { type: "string" },
+    risks: {
+      type: "array",
+      maxItems: 8,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          vector: { type: "string", enum: ["cash-flow", "pricing", "fixed-overheads", "demand", "competition", "compliance", "capacity", "key-person"] },
+          severity: { type: "string", enum: ["high", "medium", "low"] },
+          title: { type: "string" },
+          evidence: { type: "string" },
+          mitigation: { type: "string" },
+          horizon: { type: "string", enum: ["now", "30 days", "90 days"] },
+        },
+        required: ["vector", "severity", "title", "evidence", "mitigation", "horizon"],
+      },
+    },
+  },
+  required: ["verdict", "risks"],
 };
 
 function contextBlock(ctx: Ctx) {
@@ -256,6 +311,58 @@ Never substitute another industry's rules. If a requirement depends on activitie
       });
       if (r.error) return err(r.status ?? 500, r.text ?? "The coach could not create that compliance pack.");
       return ok({ text: r.json.choices?.[0]?.message?.content ?? "" });
+    }
+
+    if (action === "orchestrate") {
+      const business = (context.business ?? {}) as Record<string, unknown>;
+      const experience = String(business.experience ?? "novice");
+      const r = await callGateway({
+        messages: [
+          { role: "system", content: `${BASE}\nYou are the Foundry execution brain. Decompose the founder's 90-day plan into concrete daily micro-tasks and return structured JSON only.` },
+          {
+            role: "user",
+            content: `${contextBlock(context)}
+
+Turn the founder's 90-day goal into 18-26 micro-tasks:
+- Order matters: legal registrations, permits and compliance actions come first; documents and branding follow; then operations, marketing and sales.
+- due_day: day number 1-90 from today, weighted toward the first 30 days (e.g. 3, 7, 14, 21, 30). Front-load compliance deadlines.
+- detail: one to two sentences. The founder's experience level is "${experience}": for a novice explain what the task involves and how to do it; for "some" or "experienced" be terse and assume they know the institutions.
+- Every task must be specific to this founder's industry, city or municipality, customers and stage — never generic.
+- institution: the authority or platform involved (e.g. "CIPC BizPortal", "SARS eFiling", "UIF uFiling", "COIDA Compensation Fund", "Municipality"), or null for internal tasks like branding or pricing work.
+- requires_approval: true for any task where something is submitted, paid, or signed with an authority — the founder must approve before it happens; false for internal preparation work.
+- Cover the categories this business actually needs across registration, compliance, documents, branding, operations, marketing, sales, finance and growth.`,
+          },
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "execution_plan", strict: true, schema: ORCHESTRATE_SCHEMA } },
+      });
+      if (r.error) return err(r.status ?? 500, r.text ?? "The execution brain could not build the plan.");
+      return ok(JSON.parse(r.json.choices?.[0]?.message?.content ?? "{}"));
+    }
+
+    if (action === "stress") {
+      const r = await callGateway({
+        messages: [
+          { role: "system", content: `${BASE}\nYou are a startup failure diagnostician running a pre-capital stress test. Return structured JSON only.` },
+          {
+            role: "user",
+            content: `${contextBlock(context)}
+
+Stress-test this idea before the founder deploys money. Audit it against the real reasons startups die:
+- cash-flow starvation: money arriving later than money going out
+- underpricing — especially travel, labour and consumables for mobile or on-site businesses
+- high fixed overheads (rent, vehicles, salaries) taken on too early
+- unproven demand or a customer segment too small to pay
+- competition and customer switching behaviour
+- compliance costs or delays blocking launch (licences, permits, registrations)
+- founder capacity and key-person risk
+
+Find 3-6 risks grounded in the founder's actual inputs — reference their own numbers, customers, industry and city. Do not invent figures; where numbers are missing, express estimates as ranges or conditions ("if fuel runs R2 000/month..."). For each risk give: vector, severity (high = could kill the business within 90 days), a plain-English title, the evidence from their inputs, a concrete mitigation with numbers where possible, and the horizon when it starts to bite. Verdict: one short paragraph saying whether to proceed, adjust, or pause — and why.`,
+          },
+        ],
+        response_format: { type: "json_schema", json_schema: { name: "stress_test", strict: true, schema: STRESS_SCHEMA } },
+      });
+      if (r.error) return err(r.status ?? 500, r.text ?? "The stress test could not run.");
+      return ok(JSON.parse(r.json.choices?.[0]?.message?.content ?? "{}"));
     }
 
     return err(400, "Unknown action");

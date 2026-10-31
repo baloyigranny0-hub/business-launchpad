@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { COMPLIANCE_PACKS, CUSTOM_PACK, suggestedPack } from "@/lib/compliance";
 import { generateCompliancePack } from "@/lib/coach";
 import { FormCoach } from "@/components/FormCoach";
+import { ApprovalGate } from "@/components/ApprovalGate";
+import { INSTITUTIONS, type Institution } from "@/lib/institutions";
 
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { BadgeCheck, Building2, Clock3, FileCheck2, Loader2, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { BadgeCheck, Building2, Clock3, FileCheck2, Landmark, Loader2, MapPin, ShieldCheck, Sparkles, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 
 const Compliance = () => {
@@ -15,6 +17,7 @@ const Compliance = () => {
   const [selected, setSelected] = useState(state.compliance.packId || suggested.id);
   const [busy, setBusy] = useState(false);
   const pack = [...COMPLIANCE_PACKS, CUSTOM_PACK].find((item) => item.id === selected) ?? CUSTOM_PACK;
+  const [routerTarget, setRouterTarget] = useState<Institution | null>(null);
   useEffect(() => { if (!state.compliance.packId) setSelected(suggested.id); }, [state.compliance.packId, suggested.id]);
 
   const generate = async () => {
@@ -56,6 +59,53 @@ const Compliance = () => {
         </div>
         <Button className="mt-5" onClick={generate} disabled={busy}>{busy ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Sparkles className="size-4 mr-2" />}{state.compliance.content ? "Refresh my pack" : "Build my compliance pack"}</Button>
       </section>
+
+      {/* Institutional router — direct routes with a safety stop before anything opens */}
+      <section aria-labelledby="router-title" className="mt-10">
+        <div className="flex items-center gap-2 mb-4"><Landmark className="size-5 text-primary" /><h2 id="router-title" className="font-display text-2xl">Go straight to the source</h2></div>
+        <p className="text-sm text-muted-foreground mb-4 max-w-2xl">
+          Direct routes to the institutions South African founders deal with, each with the exact checklist of what to have ready before you click through. Registering outside South Africa? Ask the coach instead.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {INSTITUTIONS.map((inst) => (
+            <div key={inst.id} className="rounded-2xl border border-border bg-gradient-card p-5 flex flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-medium">{inst.name}</h3>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground text-right shrink-0">{inst.when.split("—")[0]}</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2 flex-1">{inst.handles}</p>
+              <div className="flex flex-wrap gap-1 mt-3">
+                {inst.forms.map((f) => (
+                  <span key={f} className="text-[10px] border border-border rounded px-1.5 py-0.5 text-muted-foreground">{f}</span>
+                ))}
+              </div>
+              <Button variant="outline" size="sm" className="mt-4 self-start" onClick={() => setRouterTarget(inst)}>
+                <ArrowUpRight className="size-4 mr-1" /> Prepare &amp; open
+              </Button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <ApprovalGate
+        open={!!routerTarget}
+        title={routerTarget ? `Prepare to visit ${routerTarget.name}` : ""}
+        whatHappens={`Foundry opens ${routerTarget?.name ?? "the site"} in a new tab — nothing is filled in or sent for you. Work through the checklist yourself, and only click submit on their site when you're satisfied. Foundry never submits anything on your behalf.`}
+        payload={[
+          { label: "Business", value: state.business.name || "Not set yet" },
+          { label: "Industry", value: state.business.industry || "Not set yet" },
+          { label: "City / municipality", value: `${state.business.city || "—"}, ${state.business.country || "—"}` },
+          { label: "Stage", value: state.business.stage },
+          { label: "Opens", value: routerTarget?.url ?? "" },
+        ]}
+        bring={routerTarget?.bring}
+        approveLabel="Approve & open"
+        onApprove={() => {
+          if (routerTarget) window.open(routerTarget.url, "_blank", "noopener");
+          setRouterTarget(null);
+        }}
+        onClose={() => setRouterTarget(null)}
+      />
 
       {state.compliance.content && (
         <section className="mt-10" aria-labelledby="saved-title">

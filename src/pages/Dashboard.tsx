@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { useStore, isStepDone } from "@/lib/store";
 import { STAGES, PHASES, stagesOfPhase, getStage } from "@/lib/roadmap";
 import { analyzeIdea } from "@/lib/coach";
-import { ArrowRight, Sparkles, Target, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { activeRisks } from "@/lib/execution";
+import { ArrowRight, Sparkles, Target, CheckCircle2, Loader2, RefreshCw, TriangleAlert, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -22,6 +23,10 @@ const Dashboard = () => {
   const overallPct = Math.round((overallDone / overallTotal) * 100);
 
   const activePhase = a?.phase ?? "concept";
+  const risks = activeRisks(state.stress);
+  const openTasks = state.execution.filter((t) => t.status === "open").sort((x, y) => x.due.localeCompare(y.due));
+  const nextMicro = openTasks[0];
+  const overdueCount = openTasks.filter((t) => t.due < new Date().toISOString().slice(0, 10)).length;
 
   let next: { stageId: string; title: string; stageTitle: string } | null = null;
   for (const s of STAGES) {
@@ -59,6 +64,21 @@ const Dashboard = () => {
           <div className="font-medium max-w-xs">{b.goal || "—"}</div>
         </div>
       </div>
+
+      {/* Risk warnings — surface before capital is deployed */}
+      {risks.length > 0 && (
+        <div className="rounded-2xl border border-primary/40 bg-primary/5 p-5 mb-8" role="alert">
+          <div className="flex items-center gap-2 mb-2"><TriangleAlert className="size-5 text-primary" /><h2 className="font-display text-xl">Risk warnings — read before you spend</h2></div>
+          <ul className="space-y-1 text-sm text-muted-foreground">
+            {risks.slice(0, 3).map((r) => (
+              <li key={r.id} className="flex gap-2"><span className="text-primary">•</span><span><span className="text-foreground font-medium">{r.title}:</span> {r.evidence}</span></li>
+            ))}
+          </ul>
+          <Link to="/app/validation" className="inline-flex items-center gap-1 text-sm text-primary mt-3 hover:underline">
+            Review the full stress test <ArrowRight className="size-3" />
+          </Link>
+        </div>
+      )}
 
       {/* Phase tracker */}
       <div className="grid sm:grid-cols-3 gap-3 mb-8">
@@ -129,6 +149,23 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Execution engine strip */}
+      {nextMicro && (
+        <div className="rounded-2xl border border-border bg-gradient-card p-5 mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-primary uppercase tracking-widest"><Bot className="size-3.5" /> Execution engine</div>
+            <div className="font-medium mt-1">{nextMicro.title}</div>
+            <p className="text-sm text-muted-foreground">
+              Due {new Date(`${nextMicro.due}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · {openTasks.length} open task{openTasks.length === 1 ? "" : "s"}
+              {overdueCount > 0 ? ` · ${overdueCount} overdue` : ""}
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/app/execution">Open my task board <ArrowRight className="ml-1 size-4" /></Link>
+          </Button>
+        </div>
+      )}
 
       {/* AI priorities */}
       {a?.priorities?.length ? (

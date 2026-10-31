@@ -171,6 +171,18 @@ const Intake = () => {
             />
           </div>
           <div>
+            <Label>Have you run this kind of business before?</Label>
+            <Choice
+              value={b.experience}
+              onChange={(v) => setBusiness({ experience: v as typeof b.experience })}
+              options={[
+                { v: "novice", label: "First-timer" },
+                { v: "some", label: "Some experience" },
+                { v: "experienced", label: "Experienced operator" },
+              ]}
+            />
+          </div>
+          <div>
             <Label>What do you want to achieve in 90 days?</Label>
             <Textarea
               value={b.goal}

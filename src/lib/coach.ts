@@ -39,3 +39,35 @@ export function askFormCoach(args: {
   return invoke<{ text: string }>({ action: "formscreen", ...args, context: coachContext() });
 }
 
+export type OrchestratorTask = {
+  title: string;
+  detail: string;
+  due_day: number;
+  priority: "high" | "medium" | "low";
+  category: "registration" | "compliance" | "documents" | "branding" | "operations" | "marketing" | "sales" | "finance" | "validation" | "growth";
+  institution: string | null;
+  requires_approval: boolean;
+};
+
+export type StressResult = {
+  verdict: string;
+  risks: {
+    vector: "cash-flow" | "pricing" | "fixed-overheads" | "demand" | "competition" | "compliance" | "capacity" | "key-person";
+    severity: "high" | "medium" | "low";
+    title: string;
+    evidence: string;
+    mitigation: string;
+    horizon: "now" | "30 days" | "90 days";
+  }[];
+};
+
+/** Autonomous execution brain: decomposes the 90-day plan into dated micro-tasks. */
+export function runOrchestrator() {
+  return invoke<{ tasks: OrchestratorTask[] }>({ action: "orchestrate", context: coachContext() });
+}
+
+/** Failure/risk diagnostic: audits the idea against real startup failure vectors. */
+export function runStressTest() {
+  return invoke<StressResult>({ action: "stress", context: coachContext() });
+}
+

@@ -163,3 +163,14 @@ class AgentPlan(DomainModel):
     confirmation_required: list[dict[str, Any]] = Field(default_factory=list)
     status: str = "ready"
     model: str = "deterministic"
+
+
+class OperatorResponse(DomainModel):
+    message: str
+    bottleneck: str
+    today_tasks: list[Task] = Field(default_factory=list, max_length=3)
+    ui_actions: list[dict[str, Any]] = Field(default_factory=list)
+    confirmation_required: list[dict[str, Any]] = Field(default_factory=list)
+    status: str = "ready"
+    model: str = "deterministic"
+    next_action: str = ""

@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Roadmap = lazy(() => import("./pages/Roadmap"));
 const Module = lazy(() => import("./pages/Module"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Execution = lazy(() => import("./pages/Execution"));
 import Auth from "./pages/Auth";
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -57,6 +58,7 @@ const App = () => (
                     <Route path="canvas" element={<Canvas />} />
                     <Route path="validation" element={<Validation />} />
                     <Route path="compliance" element={<Compliance />} />
+                    <Route path="execution" element={<Execution />} />
                     <Route path="module/:id" element={<Module />} />
                     <Route path="settings" element={<Settings />} />
                   </Route>

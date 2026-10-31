@@ -1,15 +1,28 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { PWS_CRITERIA, READINESS_BLOCKS } from "@/lib/roadmap";
-import { analyzeIdea } from "@/lib/coach";
+import { analyzeIdea, runStressTest } from "@/lib/coach";
+import { type StressTest, VECTOR_META } from "@/lib/execution";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Bot, Loader2, RefreshCw, TriangleAlert, X } from "lucide-react";
+
+const Severity = ({ s }: { s: string }) => (
+  <span
+    className={`text-[10px] uppercase tracking-widest rounded-full px-2 py-0.5 border ${
+      s === "high" ? "text-primary border-primary/40 bg-primary/10" : s === "medium" ? "border-border text-muted-foreground" : "border-border text-muted-foreground/70"
+    }`}
+  >
+    {s} risk
+  </span>
+);
 
 const Validation = () => {
-  const { state, setAnalysis } = useStore();
+  const { state, setAnalysis, setStress } = useStore();
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
   const a = state.analysis;
+  const stress = state.stress;
 
   const rerun = async () => {
     setBusy(true);
@@ -21,6 +34,24 @@ const Validation = () => {
     } finally {
       setBusy(false);
     }
+  };
+
+  const stressTest = async () => {
+    setTesting(true);
+    try {
+      const result = await runStressTest();
+      setStress({ ...result, updatedAt: new Date().toISOString() } satisfies StressTest);
+      toast.success("Stress test complete", { description: "High-severity warnings also appear on your dashboard." });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not run the stress test");
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const dismissRisk = (id: string) => {
+    if (!stress) return;
+    setStress({ ...stress, risks: stress.risks.map((r) => (r.id === id ? { ...r, dismissed: true } : r)) });
   };
 
   const scoreOf = (key: string) => a?.pws.criteria.find((c) => c.key === key);
@@ -72,6 +103,58 @@ const Validation = () => {
           );
         })}
       </div>
+
+      {/* Stress test — failure & risk diagnostic */}
+      <section aria-labelledby="stress-title" className="mb-12">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
+          <div>
+            <div className="flex items-center gap-2"><Bot className="size-5 text-primary" /><h2 id="stress-title" className="font-display text-2xl">Stress test</h2></div>
+            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+              Before you spend money, the co-founder audits your idea against the reasons startups actually die — cash-flow starvation, underpricing travel and labour, fixed overheads taken too early, unproven demand.
+            </p>
+          </div>
+          <Button onClick={stressTest} disabled={testing} className="bg-gradient-primary text-primary-foreground hover:opacity-90">
+            {testing ? <Loader2 className="size-4 mr-2 animate-spin" /> : <TriangleAlert className="size-4 mr-2" />}
+            {stress ? "Run the stress test again" : "Run the stress test"}
+          </Button>
+        </div>
+
+        {stress && (
+          <>
+            <div className="rounded-2xl border border-border bg-gradient-card p-5 mb-4">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Diagnostic verdict</div>
+              <p className="text-sm">{stress.verdict}</p>
+              {stress.updatedAt && (
+                <div className="text-xs text-muted-foreground mt-2">Run on {new Date(stress.updatedAt).toLocaleDateString()} — re-run it whenever your numbers or customers change.</div>
+              )}
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {stress.risks.map((r) => (
+                <div key={r.id} className={`rounded-2xl border p-5 ${r.severity === "high" && !r.dismissed ? "border-primary/50 bg-primary/5" : "border-border bg-gradient-card"}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Severity s={r.severity} />
+                      <span className="text-xs text-muted-foreground">{VECTOR_META[r.vector]?.label ?? r.vector} · bites {r.horizon}</span>
+                    </div>
+                    <button onClick={() => dismissRisk(r.id)} aria-label="Dismiss this risk" className="text-muted-foreground hover:text-foreground p-1 shrink-0">
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                  <h3 className="font-medium mt-2">{r.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-2"><span className="text-foreground font-medium">What it's based on: </span>{r.evidence}</p>
+                  <p className="text-sm text-muted-foreground mt-2"><span className="text-foreground font-medium">What to do: </span>{r.mitigation}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {!stress && (
+          <p className="text-sm text-muted-foreground">
+            Not run yet. It works best once you've filled in your Lean Canvas — the more real numbers you give the coach, the sharper the warnings.
+          </p>
+        )}
+      </section>
 
       <h2 className="font-display text-2xl mb-4">Readiness</h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">

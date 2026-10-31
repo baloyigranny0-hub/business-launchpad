@@ -101,3 +101,68 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: Build the Foundry Operator execution engine from the connected Git repository without using Lovable credits.
+## backend:
+##   - task: "Foundry Operator domain and policies"
+##     implemented: true
+##     working: true
+##     file: "backend/foundry_operator/domain.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##         -working: true
+##         -agent: "main"
+##         -comment: "Johannesburg boundaries, UTC timestamps, task lifecycle, evidence/reason rules, and three-task policy pass focused tests."
+##   - task: "Storage adapters and founder mapping"
+##     implemented: true
+##     working: true
+##     file: "backend/foundry_operator/mongo_storage.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##         -working: true
+##         -agent: "main"
+##         -comment: "In-memory contract tests pass; Mongo translation, internal UUID mapping, atomic plan/audit path, and Supabase migration are implemented."
+##   - task: "Operator planner and API"
+##     implemented: true
+##     working: true
+##     file: "backend/foundry_operator/routes.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##         -working: true
+##         -agent: "main"
+##         -comment: "Deterministic fallback, provider boundary, allowlisted tools, auth/session scoping, and operator route tests pass."
+## frontend:
+##   - task: "Daily execution console"
+##     implemented: true
+##     working: true
+##     file: "frontend/src/rooms/Journey.jsx"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##         -working: true
+##         -agent: "main"
+##         -comment: "Journey now renders today's focus, task evidence controls, coach panel, progress signals, template review, and legacy fallback. Production build compiled successfully."
+## metadata:
+##   created_by: "main_agent"
+##   version: "1.0"
+##   test_sequence: 1
+##   run_ui: false
+## test_plan:
+##   current_focus:
+##     - "Review implementation diff for secrets and hardcoded tunnel URLs"
+##     - "Run final focused backend suite and frontend build"
+##   stuck_tasks:
+##     - "Remote legacy tests require unreachable historical Emergent DNS"
+##     - "Local HTTP smoke probe is blocked by the current Windows Python/socket runtime"
+##   test_all: true
+##   test_priority: "high_first"
+## agent_communication:
+##     -agent: "main"
+##     -message: "Implementation complete in the FOUNDRY clone; focused local tests pass, frontend builds, and remote legacy failures are environmental DNS failures."
